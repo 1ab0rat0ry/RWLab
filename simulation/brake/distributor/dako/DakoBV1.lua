@@ -21,15 +21,16 @@ local CYLINDER_FILL_TIME = 3.6
 local CYLINDER_EMPTY_TIME = 16
 local CYLINDER_FILL_RATE = 0.95 * CYLINDER_MAX_PRESSURE / CYLINDER_FILL_TIME
 local CYLINDER_EMPTY_RATE = 0.895 * CYLINDER_MAX_PRESSURE / CYLINDER_EMPTY_TIME
+local DISTRIBUTOR_SENSITIVITY = 0.1
+local DISTRIBUTOR_HYSTERESIS = 0.007
 
-local Bv1 = {}
 local DistributorValve = {}
 
 DistributorValve.maxHysteresis = 0
 DistributorValve.hysteresis = 0
 DistributorValve.position = 0
 DistributorValve.cylinderPressureTarget = 0
-DistributorValve.cylinderPressureCalculatedLast = 0
+DistributorValve.brakePipePressureLast = 0
 DistributorValve.inshotStopwatch = {}
 DistributorValve.average = {}
 
@@ -42,6 +43,8 @@ function DistributorValve:new(maxHysteresis, inshotDelay)
     o.inshotStopwatch = Stopwatch:new(inshotDelay)
     return o
 end
+
+local Bv1 = {}
 
 Bv1.turnOffValve = true
 Bv1.distributorValve = DistributorValve
@@ -122,19 +125,19 @@ end
 function Bv1.distributorValve:update(timeDelta, brakePipe, bv1)
     local cylinderPressureCalculated = (bv1.distributorRes.pressure - brakePipe.pressure) * CYLINDER_PRESSURE_COEF
 
-    if cylinderPressureCalculated > self.cylinderPressureCalculatedLast then
-        if self.inshotStopwatch:hasFinished() and cylinderPressureCalculated > self.cylinderPressureCalculatedLast + 0.01 * timeDelta then
+    if brakePipe.pressure < self.brakePipePressureLast then
+        if brakePipe.pressure < self.brakePipePressureLast - 0.1 * timeDelta then
             self.cylinderPressureTarget = math.max(cylinderPressureCalculated, CYLINDER_INSHOT_PRESSURE)
         else
             self.cylinderPressureTarget = cylinderPressureCalculated
         end
-    elseif cylinderPressureCalculated < self.cylinderPressureCalculatedLast then
+    elseif brakePipe.pressure > self.brakePipePressureLast then
         if cylinderPressureCalculated < CYLINDER_INSHOT_PRESSURE then
             self.inshotStopwatch:reset()
         end
         self.cylinderPressureTarget = cylinderPressureCalculated
     end
-    self.cylinderPressureCalculatedLast = cylinderPressureCalculated
+    self.brakePipePressureLast = brakePipe.pressure
 
     local pressureDiff = self.cylinderPressureTarget - bv1.cylinder.pressure
     local pressureLimit = Easings.sineOut(CYLINDER_MAX_PRESSURE - bv1.cylinder.pressure)
