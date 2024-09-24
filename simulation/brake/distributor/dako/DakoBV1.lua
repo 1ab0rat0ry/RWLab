@@ -31,7 +31,6 @@ DistributorValve.hysteresis = 0
 DistributorValve.position = 0
 DistributorValve.cylinderPressureTarget = 0
 DistributorValve.brakePipePressureLast = 0
-DistributorValve.inshotStopwatch = {}
 DistributorValve.average = {}
 
 function DistributorValve:new(maxHysteresis, inshotDelay)
@@ -80,7 +79,7 @@ function Bv1:update(timeDelta, brakePipe)
 end
 
 function Bv1:updateAcceleratorMechanism(timeDelta, brakePipe)
-    if self.auxiliaryRes.pressure - brakePipe.pressure > 0.1 * timeDelta then
+    if self.auxiliaryRes.pressure - brakePipe.pressure > 0.06 * timeDelta then
         self.acceleratorValve = math.min(1, self.acceleratorValve + 5 * timeDelta)
     else
         self.acceleratorValve = math.max(0, self.acceleratorValve - timeDelta)
@@ -132,9 +131,6 @@ function Bv1.distributorValve:update(timeDelta, brakePipe, bv1)
             self.cylinderPressureTarget = cylinderPressureCalculated
         end
     elseif brakePipe.pressure > self.brakePipePressureLast then
-        if cylinderPressureCalculated < CYLINDER_INSHOT_PRESSURE then
-            self.inshotStopwatch:reset()
-        end
         self.cylinderPressureTarget = cylinderPressureCalculated
     end
     self.brakePipePressureLast = brakePipe.pressure
