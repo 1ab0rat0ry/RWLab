@@ -1,4 +1,4 @@
-local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/Reservoir.out"
+local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
 local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"

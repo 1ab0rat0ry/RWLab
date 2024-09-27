@@ -1,4 +1,4 @@
-local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/Reservoir.out"
+local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 
 local PIPE_DIAMETER = 0.3175 -- unit: dm

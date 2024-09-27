@@ -1,4 +1,5 @@
-local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation//brake/Reservoir.out"
+local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
+local Cylinder = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Cylinder.out"
 local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
@@ -54,7 +55,7 @@ Bv1.acceleratorValve = 0
 Bv1.accelerationChamber = Reservoir
 Bv1.distributorRes = Reservoir
 Bv1.auxiliaryRes = Reservoir
-Bv1.cylinder = Reservoir
+Bv1.cylinder = Cylinder
 
 function Bv1:new()
     local o = setmetatable({}, self)
@@ -63,7 +64,7 @@ function Bv1:new()
     o.accelerationChamber = Reservoir:new(0.46)
     o.distributorRes = Reservoir:new(9)
     o.auxiliaryRes = Reservoir:new(100)
-    o.cylinder = Reservoir:new(10)
+    o.cylinder = Cylinder:new(10, CYLINDER_MAX_PRESSURE)
     o.distributorRes.pressure = 5
     o.auxiliaryRes.pressure = 5
     return o
