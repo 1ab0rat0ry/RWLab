@@ -157,7 +157,7 @@ end
 
 function Bs2.DistributorValve:update(timeDelta, brakePipe)
     local pressureDiff = self.controlChamber.pressure - brakePipe.pressure + Bs2.overchargeRes.pressure / 12.5
-    local positionTarget = MathUtil.clamp(2 * pressureDiff, -1, 1)
+    local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, 1)
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
