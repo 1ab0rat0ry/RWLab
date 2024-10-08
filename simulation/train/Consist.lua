@@ -1,6 +1,6 @@
--- Adapted from: 
-
 local Logger = require "Assets/1ab0rat0ry/RWLab/utils/Logger.out"
+local ArrayList = require "Assets/1ab0rat0ry/RWLab/utils/ArrayList.out"
+
 local logger = Logger:new(false, "BrakePipe.log")
 
 local Consist = {}
