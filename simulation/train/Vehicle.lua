@@ -1,27 +1,31 @@
 local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 
-local PIPE_DIAMETER = 0.3175 -- unit: dm
+local PIPE_DIAMETER = 0.3175 -- dm
 local PIPE_RADIUS = PIPE_DIAMETER / 2
+local PIPE_CROSS_SECTION_AREA = math.pi * PIPE_RADIUS ^ 2
+local HOSE_LENGTH = 5 -- dm
 
 local Vehicle = {}
 
 Vehicle.length = 0
+Vehicle.pipeCapacity = 0
+
+Vehicle.brakePipe = {}
 Vehicle.feedPipe = nil
-Vehicle.brakePipe = nil
-Vehicle.distributor = nil
 Vehicle.brakeValve = nil
+Vehicle.distributor = nil
+Vehicle.accelerator = nil
 
-function Vehicle:new(length, distributor, brakeValve)
+function Vehicle:new(length)
     local o = setmetatable({}, self)
-    self.__index = self
 
+    self.__index = self
+    self.pipeCapacity = (10 * length + 4 * HOSE_LENGTH) * PIPE_CROSS_SECTION_AREA
+    o.brakePipe = Reservoir:new(self.pipeCapacity)
     o.length = length
-    o.feedPipe = Reservoir:new((10 * length + 4 * 5) * math.pi * PIPE_RADIUS ^ 2 + 400)
-    o.brakePipe = Reservoir:new((10 * length + 4 * 5) * math.pi * PIPE_RADIUS ^ 2)
-    o.distributor = distributor
-    o.brakeValve = brakeValve
     o.brakePipe.pressure = 5
+
     return o
 end
 
@@ -41,6 +45,22 @@ function Vehicle:getBrakeControl()
     -- local frictionCoef = 0.6 * pressureComponent * speedComponent
     -- local brakeForce = brakePadPressure * frictionCoef
     return brakePadPressure
+end
+
+function Vehicle:addFeedPipe(mainResCapacity)
+    self.feedPipe = Reservoir:new(self.pipeCapacity + (mainResCapacity or 0))
+end
+
+function Vehicle:addDistributor(distributor)
+    self.distributor = distributor
+end
+
+function Vehicle:addBrakeValve(brakeValve)
+    self.brakeValve = brakeValve
+end
+
+function Vehicle:addAccelerator(accelerator)
+    self.accelerator = accelerator
 end
 
 return Vehicle
