@@ -17,49 +17,99 @@ local OVERCHGARGE_RES_CAPACITY = 5
 local OVERCHARGE_RES_FILL_TIME = 8
 local OVERCHARGE_RES_FILL_RATE = OVERCHARGE_PRESSURE / OVERCHARGE_RES_FILL_TIME
 
-local Bs2 = {}
-
-Bs2.Positions = {
-    RELEASE = 0,
-    RUNNING = 0.1,
-    NEUTRAL = 0.18,
-    MIN_REDUCTION = 0.28,
-    MAX_REDUCTION = 0.78,
-    CUTOFF = 0.86,
-    EMERGENCY = 1
-}
-Bs2.Ranges = {
-    RELEASE = Bs2.Positions.RELEASE + (Bs2.Positions.RUNNING - Bs2.Positions.RELEASE) / 2,
-    RUNNING = Bs2.Positions.RUNNING + (Bs2.Positions.NEUTRAL - Bs2.Positions.RUNNING) / 2,
-    NEUTRAL = Bs2.Positions.NEUTRAL + (Bs2.Positions.MIN_REDUCTION - Bs2.Positions.NEUTRAL) / 2,
-    SERVICE = Bs2.Positions.MAX_REDUCTION + (Bs2.Positions.CUTOFF - Bs2.Positions.MAX_REDUCTION) / 2,
-    CUTOFF = Bs2.Positions.CUTOFF + (Bs2.Positions.EMERGENCY - Bs2.Positions.CUTOFF) / 2,
-    EMERGENCY = Bs2.Positions.EMERGENCY
-}
-
-Bs2.emergencyValve = false -- false = closed, true = opened
-Bs2.interruptValve = 0 -- 0 = closed, 1 = fully opened
-Bs2.releaseValve = false -- false = closed, true = opened
-Bs2.DistributorValve = {
+local DistributorValve = {
     MAX_HYSTERESIS = 0.1,
-    hysteresis = 0.1,
+    hysteresis = 0,
     position = 0,
-    controlChamber = Reservoir:new(0.3),
-    average = MovingAverage:new(2)
+    controlChamber = {},
+    average = {}
 }
-Bs2.DistributorValve.controlChamber.pressure = 5
+DistributorValve.__index = DistributorValve
+DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
 
-Bs2.setPressure = 0
-Bs2.controlRes = Reservoir:new(CONTROL_RES_CAPACITY)
-Bs2.overchargeRes = Reservoir:new(OVERCHGARGE_RES_CAPACITY)
+function DistributorValve:new()
+    local obj = {
+        controlChamber = Reservoir:new(0.3),
+        average = MovingAverage:new(2)
+    }
+    obj = setmetatable(obj, self)
+    obj.controlChamber.pressure = 5
 
-Bs2.hasOvercharge = false
+    return obj
+end
 
-function Bs2:new()
-    local o = setmetatable({}, self)
-    self.__index = self
-    o.controlRes.pressure = 5
-    return o
+function DistributorValve:update(timeDelta, brakePipe, overchargePressure)
+    local pressureDiff = self.controlChamber.pressure - brakePipe.pressure + overchargePressure / 12.5
+    local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, 1)
+    local positionDelta = math.abs(positionTarget - self.position)
+
+    if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
+        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + timeDelta / 100)
+    elseif positionDelta > 0.001 then
+        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * timeDelta)
+    end
+    self.average:add(positionTarget)
+
+    local positionDiff = self.average:get() - self.position
+
+    if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
+        self.position = 0
+    elseif self.position < positionTarget - self.hysteresis then
+        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
+    elseif self.position > positionTarget + self.hysteresis then
+        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
+    end
+end
+
+local Bs2 = {
+    Notches = {
+        RELEASE = 0,
+        RUNNING = 0,
+        NEUTRAL = 0,
+        MIN_REDUCTION = 0,
+        MAX_REDUCTION = 0,
+        CUTOFF = 0,
+        EMERGENCY = 0
+    },
+    Ranges = {
+        RELEASE = 0,
+        RUNNING = 0,
+        NEUTRAL = 0,
+        SERVICE = 0,
+        CUTOFF = 0,
+        EMERGENCY = 0
+    },
+
+    emergencyValve = false, -- false = closed, true = opened
+    interruptValve = 0, -- 0 = closed, 1 = fully opened
+    releaseValve = false, -- false = closed, true = opened
+    distributorValve = {},
+
+    setPressure = 0,
+    controlRes = {},
+    overchargeRes = {},
+
+    hasOvercharge = false
+}
+Bs2.__index = Bs2
+
+function Bs2:new(notches)
+    local obj = {
+        Notches = notches,
+        distributorValve = DistributorValve:new(),
+        controlRes = Reservoir:new(CONTROL_RES_CAPACITY),
+        overchargeRes = Reservoir:new(OVERCHGARGE_RES_CAPACITY)
+    }
+    obj = setmetatable(obj, self)
+    obj.Ranges.RELEASE = obj.Notches.RELEASE + (obj.Notches.RUNNING - obj.Notches.RELEASE) / 2
+    obj.Ranges.RUNNING = obj.Notches.RUNNING + (obj.Notches.NEUTRAL - obj.Notches.RUNNING) / 2
+    obj.Ranges.NEUTRAL = obj.Notches.NEUTRAL + (obj.Notches.MIN_REDUCTION - obj.Notches.NEUTRAL) / 2
+    obj.Ranges.SERVICE = obj.Notches.MAX_REDUCTION + (obj.Notches.CUTOFF - obj.Notches.MAX_REDUCTION) / 2
+    obj.Ranges.CUTOFF = obj.Notches.CUTOFF + (obj.Notches.EMERGENCY - obj.Notches.CUTOFF) / 2
+    obj.Ranges.EMERGENCY = obj.Notches.EMERGENCY
+    obj.controlRes.pressure = 5
+
+    return obj
 end
 
 function Bs2:update(timeDelta, feedPipe, brakePipe)
@@ -83,8 +133,8 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe)
         self.interruptValve = 0
         self.releaseValve = false
     elseif position <= self.Ranges.SERVICE then
-        local serviceRange = self.Positions.MAX_REDUCTION - self.Positions.MIN_REDUCTION
-        local serviceProgress = (position - self.Positions.MIN_REDUCTION) / serviceRange
+        local serviceRange = self.Notches.MAX_REDUCTION - self.Notches.MIN_REDUCTION
+        local serviceProgress = (position - self.Notches.MIN_REDUCTION) / serviceRange
         local pressureDropRange = MAX_REDUCTION_PRESSURE_DROP - MIN_REDUCTION_PRESSURE_DROP
         local pressureDrop = MIN_REDUCTION_PRESSURE_DROP + pressureDropRange * serviceProgress
 
@@ -112,33 +162,22 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe)
 end
 
 function Bs2:updateValves(timeDelta, feedPipe, brakePipe)
-    if self.emergencyValve then
-        local emptyRate = 70
-        brakePipe:vent(timeDelta, nil, emptyRate)
+    if self.emergencyValve then brakePipe:vent(timeDelta, nil, 70) end
+    if self.releaseValve then self.distributorValve.controlChamber:equalize(feedPipe, timeDelta)
+    else self.distributorValve.controlChamber:equalize(self.controlRes, timeDelta)
     end
-
-    if self.releaseValve then
-        self.DistributorValve.controlChamber:equalize(feedPipe, timeDelta)
-    else
-        self.DistributorValve.controlChamber:equalize(self.controlRes, timeDelta)
-    end
-
-    if self.interruptValve > 0 then self:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
-    -- else
-    --     Call("SoundBrzdice:SetParameter", "MainPipeReleasing", 0)
-    --     Call("SoundBrzdice:SetParameter", "MainPipeFilling", 0)
-    end
+    self:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
 end
 
 function Bs2:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
-    self.DistributorValve:update(timeDelta, brakePipe)
+    self.distributorValve:update(timeDelta, brakePipe, self.overchargeRes.pressure)
 
-    if self.DistributorValve.position > 0 then
-        local fillRate = 50 * Easings.sineOut(math.min(self.interruptValve, math.abs(self.DistributorValve.position))) / brakePipe.capacity
-        brakePipe:equalize(feedPipe, timeDelta, fillRate, 50)
-    elseif self.DistributorValve.position < 0 then
-        local emptyRate = 30 * Easings.sineOut(math.abs(self.DistributorValve.position)) / brakePipe.capacity
-        brakePipe:vent(timeDelta, emptyRate, 30)
+    if self.distributorValve.position > 0 then
+        local fillRate = 30 * Easings.sineOut(math.min(self.interruptValve, math.abs(self.distributorValve.position)))
+        brakePipe:equalize(feedPipe, timeDelta, nil, fillRate)
+    elseif self.distributorValve.position < 0 then
+        local emptyRate = 20 * Easings.sineOut(math.abs(self.distributorValve.position))
+        brakePipe:vent(timeDelta, nil, emptyRate)
     end
 end
 
@@ -147,34 +186,11 @@ function Bs2:updateOvercharge(timeDelta, feedPipe, brakePipe)
         self.overchargeRes:vent(timeDelta, 0.03)
     end
 
-    if self.DistributorValve.controlChamber.pressure > 5.1 and self.DistributorValve.position > 0.3 then
+    if self.distributorValve.controlChamber.pressure > 5.1 and self.distributorValve.position > 0.3 then
         local fillRate = 0.5
         self.overchargeRes:equalize(feedPipe, timeDelta, fillRate, OVERCHGARGE_RES_CAPACITY)
     elseif self.hasOvercharge and Call("GetControlValue", "Overcharge", 0) > 0.5 then
         self.overchargeRes:equalize(brakePipe, OVERCHARGE_RES_FILL_RATE, OVERCHGARGE_RES_CAPACITY)
-    end
-end
-
-function Bs2.DistributorValve:update(timeDelta, brakePipe)
-    local pressureDiff = self.controlChamber.pressure - brakePipe.pressure + Bs2.overchargeRes.pressure / 12.5
-    local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, 1)
-    local positionDelta = math.abs(positionTarget - self.position)
-
-    if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + timeDelta / 100)
-    elseif positionDelta > 0.001 then
-        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * timeDelta)
-    end
-    self.average:add(positionTarget)
-
-    local positionDiff = self.average:get() - self.position
-
-    if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
-        self.position = 0
-    elseif self.position < positionTarget - self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
-    elseif self.position > positionTarget + self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
     end
 end
 
