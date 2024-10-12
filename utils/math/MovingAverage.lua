@@ -1,3 +1,4 @@
+---@class MovingAverage
 local MovingAverage = {}
 
 MovingAverage.sampleSize = 0

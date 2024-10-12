@@ -17,6 +17,12 @@ local OVERCHGARGE_RES_CAPACITY = 5
 local OVERCHARGE_RES_FILL_TIME = 8
 local OVERCHARGE_RES_FILL_RATE = OVERCHARGE_PRESSURE / OVERCHARGE_RES_FILL_TIME
 
+---@field MAX_HYSTERESIS number
+---@field hysteresis number
+---@field position number
+---@field controlChamber Reservoir
+---@field average MovingAverage
+---@class DistributorValve regulates pressure in brake pipe based on the pressure in control chamber
 local DistributorValve = {
     MAX_HYSTERESIS = 0.1,
     hysteresis = 0,
@@ -27,6 +33,8 @@ local DistributorValve = {
 DistributorValve.__index = DistributorValve
 DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
 
+---Creates a new instance of distributor valve.
+---@return DistributorValve
 function DistributorValve:new()
     local obj = {
         controlChamber = Reservoir:new(0.3),
@@ -38,6 +46,7 @@ function DistributorValve:new()
     return obj
 end
 
+---Updates position of distributor valve.
 function DistributorValve:update(timeDelta, brakePipe, overchargePressure)
     local pressureDiff = self.controlChamber.pressure - brakePipe.pressure + overchargePressure / 12.5
     local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, 1)
@@ -61,8 +70,16 @@ function DistributorValve:update(timeDelta, brakePipe, overchargePressure)
     end
 end
 
+---@field emergencyValve boolean
+---@field interruptValve number
+---@field releaseValve number
+---@field distributorValve DistributorValve
+---@field setPressure number
+---@field controlRes Reservoir
+---@field overchargeRes Reservoir
+---@class Bs2 selflapping driver's brake valve used mainly on older locomotives
 local Bs2 = {
-    Notches = {
+    notches = {
         RELEASE = 0,
         RUNNING = 0,
         NEUTRAL = 0,
@@ -71,7 +88,7 @@ local Bs2 = {
         CUTOFF = 0,
         EMERGENCY = 0
     },
-    Ranges = {
+    ranges = {
         RELEASE = 0,
         RUNNING = 0,
         NEUTRAL = 0,
@@ -80,9 +97,9 @@ local Bs2 = {
         EMERGENCY = 0
     },
 
-    emergencyValve = false, -- false = closed, true = opened
-    interruptValve = 0, -- 0 = closed, 1 = fully opened
-    releaseValve = false, -- false = closed, true = opened
+    emergencyValve = false,
+    interruptValve = 0,
+    releaseValve = false,
     distributorValve = {},
 
     setPressure = 0,
@@ -93,48 +110,55 @@ local Bs2 = {
 }
 Bs2.__index = Bs2
 
+---Creates a new instance of Dako BS2.
+---@param notches table
+---@return Bs2
 function Bs2:new(notches)
     local obj = {
-        Notches = notches,
+        notches = notches,
         distributorValve = DistributorValve:new(),
         controlRes = Reservoir:new(CONTROL_RES_CAPACITY),
         overchargeRes = Reservoir:new(OVERCHGARGE_RES_CAPACITY)
     }
     obj = setmetatable(obj, self)
-    obj.Ranges.RELEASE = obj.Notches.RELEASE + (obj.Notches.RUNNING - obj.Notches.RELEASE) / 2
-    obj.Ranges.RUNNING = obj.Notches.RUNNING + (obj.Notches.NEUTRAL - obj.Notches.RUNNING) / 2
-    obj.Ranges.NEUTRAL = obj.Notches.NEUTRAL + (obj.Notches.MIN_REDUCTION - obj.Notches.NEUTRAL) / 2
-    obj.Ranges.SERVICE = obj.Notches.MAX_REDUCTION + (obj.Notches.CUTOFF - obj.Notches.MAX_REDUCTION) / 2
-    obj.Ranges.CUTOFF = obj.Notches.CUTOFF + (obj.Notches.EMERGENCY - obj.Notches.CUTOFF) / 2
-    obj.Ranges.EMERGENCY = obj.Notches.EMERGENCY
+    obj.ranges.RELEASE = obj.notches.RELEASE + (obj.notches.RUNNING - obj.notches.RELEASE) / 2
+    obj.ranges.RUNNING = obj.notches.RUNNING + (obj.notches.NEUTRAL - obj.notches.RUNNING) / 2
+    obj.ranges.NEUTRAL = obj.notches.NEUTRAL + (obj.notches.MIN_REDUCTION - obj.notches.NEUTRAL) / 2
+    obj.ranges.SERVICE = obj.notches.MAX_REDUCTION + (obj.notches.CUTOFF - obj.notches.MAX_REDUCTION) / 2
+    obj.ranges.CUTOFF = obj.notches.CUTOFF + (obj.notches.EMERGENCY - obj.notches.CUTOFF) / 2
+    obj.ranges.EMERGENCY = obj.notches.EMERGENCY
     obj.controlRes.pressure = 5
 
     return obj
 end
 
+---Updates the whole brake valve.
 function Bs2:update(timeDelta, feedPipe, brakePipe)
     self:updateControlMechanism(timeDelta, Call("GetControlValue", "VirtualBrake", 0), feedPipe)
     self:updateValves(timeDelta, feedPipe, brakePipe)
     self:updateOvercharge(timeDelta, feedPipe, brakePipe)
 end
 
+---Regulates pressure in control reservoir (control pressure)
+---and operates release, interrupt and emergency valves based on handle position.
 function Bs2:updateControlMechanism(timeDelta, position, feedPipe)
-    if position <= self.Ranges.RELEASE then
+    if position <= self.ranges.RELEASE then
         self.emergencyValve = false
         self.interruptValve = 1
         self.releaseValve = true
-    elseif position <= self.Ranges.RUNNING then
+    elseif position <= self.ranges.RUNNING then
         self.emergencyValve = false
         self.interruptValve = 0.3
         self.releaseValve = false
         self.setPressure = REFERENCE_PRESSURE
-    elseif position <= self.Ranges.NEUTRAL then
+    elseif position <= self.ranges.NEUTRAL then
         self.emergencyValve = false
         self.interruptValve = 0
         self.releaseValve = false
-    elseif position <= self.Ranges.SERVICE then
-        local serviceRange = self.Notches.MAX_REDUCTION - self.Notches.MIN_REDUCTION
-        local serviceProgress = (position - self.Notches.MIN_REDUCTION) / serviceRange
+    elseif position <= self.ranges.SERVICE then
+        --calculate pressure for current brake notch
+        local serviceRange = self.notches.MAX_REDUCTION - self.notches.MIN_REDUCTION
+        local serviceProgress = (position - self.notches.MIN_REDUCTION) / serviceRange
         local pressureDropRange = MAX_REDUCTION_PRESSURE_DROP - MIN_REDUCTION_PRESSURE_DROP
         local pressureDrop = MIN_REDUCTION_PRESSURE_DROP + pressureDropRange * serviceProgress
 
@@ -142,11 +166,11 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe)
         self.interruptValve = 0.3
         self.releaseValve = false
         self.setPressure = REFERENCE_PRESSURE - pressureDrop
-    elseif position <= self.Ranges.CUTOFF then
+    elseif position <= self.ranges.CUTOFF then
         self.emergencyValve = false
         self.interruptValve = 0
         self.releaseValve = false
-    elseif position <= self.Ranges.EMERGENCY then
+    elseif position <= self.ranges.EMERGENCY then
         self.emergencyValve = true
         self.interruptValve = 0
         self.releaseValve = false
@@ -169,6 +193,7 @@ function Bs2:updateValves(timeDelta, feedPipe, brakePipe)
     self:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
 end
 
+---Fills, empties and maintains pressure in brake pipe.
 function Bs2:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
     self.distributorValve:update(timeDelta, brakePipe, self.overchargeRes.pressure)
 
@@ -181,14 +206,12 @@ function Bs2:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
     end
 end
 
+---Fills overcharge reservoir when high-pressure release is active or overcharge button is pressed.
+---Slowly bleeds pressure from the reservoir to remove overcharge in brake pipe.
 function Bs2:updateOvercharge(timeDelta, feedPipe, brakePipe)
-    if self.overchargeRes.pressure > 0 then
-        self.overchargeRes:vent(timeDelta, 0.03)
-    end
-
+    if self.overchargeRes.pressure > 0 then self.overchargeRes:vent(timeDelta, 0.03) end
     if self.distributorValve.controlChamber.pressure > 5.1 and self.distributorValve.position > 0.3 then
-        local fillRate = 0.5
-        self.overchargeRes:equalize(feedPipe, timeDelta, fillRate, OVERCHGARGE_RES_CAPACITY)
+        self.overchargeRes:equalize(feedPipe, timeDelta, 0.5, OVERCHGARGE_RES_CAPACITY)
     elseif self.hasOvercharge and Call("GetControlValue", "Overcharge", 0) > 0.5 then
         self.overchargeRes:equalize(brakePipe, OVERCHARGE_RES_FILL_RATE, OVERCHGARGE_RES_CAPACITY)
     end

@@ -1,9 +1,10 @@
--- Adapted from: https://github.com/mspielberg/dv-airbrake --
+-- Adapted from: https://github.com/mspielberg/dv-airbrake
 
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 
 --local AIR_DENSITY = 0.0121 --kg/m^3
 
+---@class Reservoir
 local Reservoir = {}
 
 Reservoir.pressure = 0
