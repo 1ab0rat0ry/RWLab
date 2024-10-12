@@ -17,12 +17,13 @@ local OVERCHGARGE_RES_CAPACITY = 5
 local OVERCHARGE_RES_FILL_TIME = 8
 local OVERCHARGE_RES_FILL_RATE = OVERCHARGE_PRESSURE / OVERCHARGE_RES_FILL_TIME
 
+---Regulates pressure in brake pipe based on the pressure in control chamber.
+---@class DistributorValve
 ---@field MAX_HYSTERESIS number
 ---@field hysteresis number
 ---@field position number
 ---@field controlChamber Reservoir
 ---@field average MovingAverage
----@class DistributorValve regulates pressure in brake pipe based on the pressure in control chamber
 local DistributorValve = {
     MAX_HYSTERESIS = 0.1,
     hysteresis = 0,
@@ -36,6 +37,7 @@ DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
 ---Creates a new instance of distributor valve.
 ---@return DistributorValve
 function DistributorValve:new()
+    ---@type DistributorValve
     local obj = {
         controlChamber = Reservoir:new(0.3),
         average = MovingAverage:new(2)
@@ -70,14 +72,15 @@ function DistributorValve:update(timeDelta, brakePipe, overchargePressure)
     end
 end
 
+---Selflapping driver's brake valve used mainly on older locomotives.
+---@class Bs2
 ---@field emergencyValve boolean
 ---@field interruptValve number
----@field releaseValve number
+---@field releaseValve boolean
 ---@field distributorValve DistributorValve
 ---@field setPressure number
 ---@field controlRes Reservoir
 ---@field overchargeRes Reservoir
----@class Bs2 selflapping driver's brake valve used mainly on older locomotives
 local Bs2 = {
     notches = {
         RELEASE = 0,
@@ -114,6 +117,7 @@ Bs2.__index = Bs2
 ---@param notches table
 ---@return Bs2
 function Bs2:new(notches)
+    ---@type Bs2
     local obj = {
         notches = notches,
         distributorValve = DistributorValve:new(),
