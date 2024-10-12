@@ -160,11 +160,8 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe)
         self.interruptValve = 0
         self.releaseValve = false
     elseif position <= self.ranges.SERVICE then
-        --calculate pressure for current brake notch
-        local serviceRange = self.notches.MAX_REDUCTION - self.notches.MIN_REDUCTION
-        local serviceProgress = (position - self.notches.MIN_REDUCTION) / serviceRange
-        local pressureDropRange = MAX_REDUCTION_PRESSURE_DROP - MIN_REDUCTION_PRESSURE_DROP
-        local pressureDrop = MIN_REDUCTION_PRESSURE_DROP + pressureDropRange * serviceProgress
+        --determine pressure for current brake notch
+        local pressureDrop = MathUtil.map(position, self.notches.MIN_REDUCTION, self.notches.MAX_REDUCTION, MIN_REDUCTION_PRESSURE_DROP, MAX_REDUCTION_PRESSURE_DROP)
 
         self.emergencyValve = false
         self.interruptValve = 0.3
