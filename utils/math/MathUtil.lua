@@ -30,6 +30,19 @@ function MathUtil.inverseLerp(num, min, max)
     return MathUtil.clamp((num - min) / (max - min), 0, 1)
 end
 
+---Maps number from input range to output range.
+---@param num number
+---@param inMin number
+---@param inMax number
+---@param outMin number
+---@param outMax number
+---@return number
+function MathUtil.map(num, inMin, inMax, outMin, outMax)
+    return outMin + (outMax - outMin) / (inMax - inMin) * (num - inMin)
+end
+
+---@param num number
+---@return number for negative numbers -1, for 0 and positive 1
 function MathUtil.sign(num)
     return num < 0 and -1 or 1
 end
