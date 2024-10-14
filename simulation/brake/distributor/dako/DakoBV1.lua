@@ -146,7 +146,7 @@ function Bv1.distributorValve:update(timeDelta, brakePipe, bv1)
     elseif positionDelta > 0.001 then
         self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * timeDelta)
     end
-    self.average:add(positionTarget)
+    self.average:sample(positionTarget)
 
     local positionDiff = self.average:get() - self.position
 
