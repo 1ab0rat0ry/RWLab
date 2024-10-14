@@ -16,6 +16,7 @@ local OVERCHARGE_PRESSURE = 5.4
 local OVERCHGARGE_RES_CAPACITY = 5
 local OVERCHARGE_RES_FILL_TIME = 8
 local OVERCHARGE_RES_FILL_RATE = OVERCHARGE_PRESSURE / OVERCHARGE_RES_FILL_TIME
+local OVERCHARGE_RES_EMPTY_RATE = 0.03
 
 ---Regulates pressure in brake pipe based on the pressure in control chamber.
 ---@class DistributorValve
@@ -138,24 +139,26 @@ end
 
 ---Updates the whole brake valve.
 function Bs2:update(timeDelta, feedPipe, brakePipe)
-    self:updateControlMechanism(timeDelta, Call("GetControlValue", "VirtualBrake", 0), feedPipe)
-    self:updateValves(timeDelta, feedPipe, brakePipe)
+    self:updateControlMechanism(timeDelta, Call("GetControlValue", "VirtualBrake", 0), feedPipe, brakePipe)
     self:updateOvercharge(timeDelta, feedPipe, brakePipe)
 end
 
 ---Regulates pressure in control reservoir (control pressure)
 ---and operates release, interrupt and emergency valves based on handle position.
-function Bs2:updateControlMechanism(timeDelta, position, feedPipe)
+function Bs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
     if position <= self.ranges.RELEASE then
+        --fully open release valve to allow quick filling of brake pipe
         self.emergencyValve = false
         self.interruptValve = 1
         self.releaseValve = true
     elseif position <= self.ranges.RUNNING then
+    --fill brake pipe through choked connection
         self.emergencyValve = false
         self.interruptValve = 0.3
         self.releaseValve = false
         self.setPressure = REFERENCE_PRESSURE
     elseif position <= self.ranges.NEUTRAL then
+        --isolate brake pipe
         self.emergencyValve = false
         self.interruptValve = 0
         self.releaseValve = false
@@ -163,15 +166,18 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe)
         --determine pressure for current brake notch
         local pressureDrop = MathUtil.map(position, self.notches.MIN_REDUCTION, self.notches.MAX_REDUCTION, MIN_REDUCTION_PRESSURE_DROP, MAX_REDUCTION_PRESSURE_DROP)
 
+        --allow filling and emptying through choked connection
         self.emergencyValve = false
         self.interruptValve = 0.3
         self.releaseValve = false
         self.setPressure = REFERENCE_PRESSURE - pressureDrop
     elseif position <= self.ranges.CUTOFF then
+        --isolate brake pipe
         self.emergencyValve = false
         self.interruptValve = 0
         self.releaseValve = false
     elseif position <= self.ranges.EMERGENCY then
+        --open emergency valve, close interrupt valve to prevent unwanted refilling
         self.emergencyValve = true
         self.interruptValve = 0
         self.releaseValve = false
@@ -179,15 +185,16 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe)
 
     local changeRate = CONTROL_RES_CHANGE_RATE * Easings.sineOut(4 * math.abs(self.setPressure - self.controlRes.pressure))
 
+    --equalize control reservoir to set pressure
     if self.setPressure > self.controlRes.pressure then
         self.controlRes:equalize(feedPipe, timeDelta, changeRate)
     elseif self.setPressure < self.controlRes.pressure then
         self.controlRes:vent(timeDelta, changeRate)
     end
-end
 
-function Bs2:updateValves(timeDelta, feedPipe, brakePipe)
+    --quickly vent brake pipe
     if self.emergencyValve then brakePipe:vent(timeDelta, nil, 70) end
+    --connect control chamber with feed pipe or control reservoir
     if self.releaseValve then self.distributorValve.controlChamber:equalize(feedPipe, timeDelta)
     else self.distributorValve.controlChamber:equalize(self.controlRes, timeDelta)
     end
@@ -210,7 +217,7 @@ end
 ---Fills overcharge reservoir when high-pressure release is active or overcharge button is pressed.
 ---Slowly bleeds pressure from the reservoir to remove overcharge in brake pipe.
 function Bs2:updateOvercharge(timeDelta, feedPipe, brakePipe)
-    if self.overchargeRes.pressure > 0 then self.overchargeRes:vent(timeDelta, 0.03) end
+    if self.overchargeRes.pressure > 0 then self.overchargeRes:vent(timeDelta, OVERCHARGE_RES_EMPTY_RATE) end
     if self.distributorValve.controlChamber.pressure > 5.1 and self.distributorValve.position > 0.3 then
         self.overchargeRes:equalize(feedPipe, timeDelta, 0.5, OVERCHGARGE_RES_CAPACITY)
     elseif self.hasOvercharge and Call("GetControlValue", "Overcharge", 0) > 0.5 then
