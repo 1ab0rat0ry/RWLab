@@ -21,7 +21,6 @@ function MathUtil.lerp(factor, min, max)
     return min + (max - min) * MathUtil.clamp(factor, 0, 1)
 end
 
-
 ---@param num number
 ---@param min number
 ---@param max number
@@ -39,6 +38,15 @@ end
 ---@return number
 function MathUtil.map(num, inMin, inMax, outMin, outMax)
     return outMin + (outMax - outMin) / (inMax - inMin) * (num - inMin)
+end
+
+---Increments number towards target without overshooting it.
+---@param num number
+---@param target number
+---@param increment number
+---@return number
+function MathUtil.towards(num, target, increment)
+    return num + increment >= target and target or num + increment
 end
 
 ---@param num number
