@@ -40,13 +40,14 @@ function MathUtil.map(num, inMin, inMax, outMin, outMax)
     return outMin + (outMax - outMin) / (inMax - inMin) * (num - inMin)
 end
 
----Increments number towards target without overshooting it.
+---Steps number towards target without overshooting it.
 ---@param num number
 ---@param target number
----@param increment number
+---@param step number
 ---@return number
-function MathUtil.towards(num, target, increment)
-    return num + increment >= target and target or num + increment
+function MathUtil.towards(num, target, step)
+    step = math.abs(step)
+    return MathUtil.clamp(target, num - step, num + step)
 end
 
 ---@param num number
