@@ -149,7 +149,7 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
     if position <= self.ranges.RELEASE then
         --fully open release valve to allow quick filling of brake pipe
         self.emergencyValve = false
-        self.interruptValve = 1
+        self.interruptValve = MathUtil.map(position, 0.1 * self.ranges.RELEASE, self.ranges.RELEASE, 1, 0.3)
         self.releaseValve = true
     elseif position <= self.ranges.RUNNING then
     --fill brake pipe through choked connection
@@ -160,7 +160,7 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
     elseif position <= self.ranges.NEUTRAL then
         --isolate brake pipe
         self.emergencyValve = false
-        self.interruptValve = 0
+        self.interruptValve = MathUtil.map(position, self.ranges.RUNNING, 0.9 * self.notches.NEUTRAL, 0.3, 0)
         self.releaseValve = false
     elseif position <= self.ranges.SERVICE then
         --determine pressure for current brake notch
@@ -168,13 +168,13 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
 
         --allow filling and emptying through choked connection
         self.emergencyValve = false
-        self.interruptValve = 0.3
+        self.interruptValve = MathUtil.map(position, self.ranges.NEUTRAL, 0.9 * self.notches.MIN_REDUCTION, 0, 0.3)
         self.releaseValve = false
         self.setPressure = REFERENCE_PRESSURE - pressureDrop
     elseif position <= self.ranges.CUTOFF then
         --isolate brake pipe
         self.emergencyValve = false
-        self.interruptValve = 0
+        self.interruptValve = MathUtil.map(position, self.ranges.SERVICE, 0.9 * self.notches.CUTOFF, 0.3, 0)
         self.releaseValve = false
     elseif position <= self.ranges.EMERGENCY then
         --open emergency valve, close interrupt valve to prevent unwanted refilling
