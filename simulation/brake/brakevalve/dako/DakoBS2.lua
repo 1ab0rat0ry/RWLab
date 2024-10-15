@@ -1,5 +1,7 @@
+---@type Reservoir
 local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
 local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
+---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
 
@@ -35,7 +37,7 @@ local DistributorValve = {
 DistributorValve.__index = DistributorValve
 DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
 
----Creates a new instance of distributor valve.
+---Creates new instance of distributor valve.
 ---@return DistributorValve
 function DistributorValve:new()
     ---@type DistributorValve
@@ -49,14 +51,17 @@ function DistributorValve:new()
     return obj
 end
 
----Updates position of distributor valve.
+---Updates position accordingly to pressure in control chamber and overcharge reservoir.
+---@param timeDelta number
+---@param brakePipe Reservoir
+---@param overchargePressure number
 function DistributorValve:update(timeDelta, brakePipe, overchargePressure)
     local pressureDiff = self.controlChamber.pressure - brakePipe.pressure + overchargePressure / 12.5
     local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, 1)
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + timeDelta / 100)
+        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + timeDelta / 10)
     elseif positionDelta > 0.001 then
         self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * timeDelta)
     end
@@ -114,7 +119,7 @@ local Bs2 = {
 }
 Bs2.__index = Bs2
 
----Creates a new instance of Dako BS2.
+---Creates new instance of Dako BS2.
 ---@param notches table
 ---@return Bs2
 function Bs2:new(notches)
@@ -138,6 +143,9 @@ function Bs2:new(notches)
 end
 
 ---Updates the whole brake valve.
+---@param timeDelta number
+---@param feedPipe Reservoir
+---@param brakePipe Reservoir
 function Bs2:update(timeDelta, feedPipe, brakePipe)
     self:updateControlMechanism(timeDelta, Call("GetControlValue", "VirtualBrake", 0), feedPipe, brakePipe)
     self:updateOvercharge(timeDelta, feedPipe, brakePipe)
@@ -145,6 +153,10 @@ end
 
 ---Regulates pressure in control reservoir (control pressure)
 ---and operates release, interrupt and emergency valves based on handle position.
+---@param timeDelta number
+---@param position number
+---@param feedPipe Reservoir
+---@param brakePipe Reservoir
 function Bs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
     if position <= self.ranges.RELEASE then
         --fully open release valve to allow quick filling of brake pipe
@@ -202,6 +214,9 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
 end
 
 ---Fills, empties and maintains pressure in brake pipe.
+---@param timeDelta number
+---@param feedPipe Reservoir
+---@param brakePipe Reservoir
 function Bs2:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
     self.distributorValve:update(timeDelta, brakePipe, self.overchargeRes.pressure)
 
@@ -216,6 +231,9 @@ end
 
 ---Fills overcharge reservoir when high-pressure release is active or overcharge button is pressed.
 ---Slowly bleeds pressure from the reservoir to remove overcharge in brake pipe.
+---@param timeDelta number
+---@param feedPipe Reservoir
+---@param brakePipe Reservoir
 function Bs2:updateOvercharge(timeDelta, feedPipe, brakePipe)
     if self.overchargeRes.pressure > 0 then self.overchargeRes:vent(timeDelta, OVERCHARGE_RES_EMPTY_RATE) end
     if self.distributorValve.controlChamber.pressure > 5.1 and self.distributorValve.position > 0.3 then
