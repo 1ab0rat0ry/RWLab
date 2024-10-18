@@ -1,6 +1,6 @@
 ---@class ArrayList
----@field length number
----@field elements table
+---@field public length number
+---@field public elements table
 local ArrayList = {
     length = 0,
     elements = {}
