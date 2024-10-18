@@ -1,6 +1,6 @@
 ---@class Stopwatch
----@field lastReset number
----@field delay number
+---@field private lastReset number
+---@field private delay number
 local Stopwatch = {
     lastReset = 0,
     delay = 0
