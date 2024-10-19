@@ -13,7 +13,6 @@ local Reservoir = {
 }
 Reservoir.__index = Reservoir
 
----Creates new instance of air reservoir.
 ---@param capacity number
 ---@param pressure number
 ---@return Reservoir

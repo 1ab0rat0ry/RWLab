@@ -7,7 +7,6 @@ local Stopwatch = {
 }
 Stopwatch.__index = Stopwatch
 
----Creates new instance of stopwatch.
 ---@param delay number
 ---@return Stopwatch
 function Stopwatch:new(delay)

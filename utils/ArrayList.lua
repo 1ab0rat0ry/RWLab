@@ -7,7 +7,6 @@ local ArrayList = {
 }
 ArrayList.__index = ArrayList
 
----Creates new instance of ArrayList.
 ---@return ArrayList
 function ArrayList:new()
     ---@type ArrayList

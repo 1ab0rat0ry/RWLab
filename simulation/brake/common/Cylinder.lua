@@ -11,7 +11,6 @@ local Cylinder = {
     maxPressure = 0
 }
 
----Creates new instance of cylinder.
 ---@param capacity number
 ---@param maxPressure number
 ---@return Cylinder

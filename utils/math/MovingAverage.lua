@@ -9,7 +9,6 @@ local MovingAverage = {
 }
 MovingAverage.__index = MovingAverage
 
----Creates new instance of MovingAverage.
 ---@param sampleSize number
 ---@return MovingAverage
 function MovingAverage:new(sampleSize)

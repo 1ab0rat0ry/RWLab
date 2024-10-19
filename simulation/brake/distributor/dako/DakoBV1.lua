@@ -57,7 +57,6 @@ local DistributorValve = {
 DistributorValve.__index = DistributorValve
 DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
 
----Creates new instance of distributor valve.
 ---@return DistributorValv
 function DistributorValve:new()
     ---@type DistributorValv
@@ -110,6 +109,7 @@ function DistributorValve:update(timeDelta, brakePipe, distributor)
     end
 end
 
+
 ---@class DakoBv1
 ---@field private turnOffValve boolean
 ---@field private distributorValve DistributorValv
@@ -133,7 +133,6 @@ local DakoBv1 = {
 }
 DakoBv1.__index = DakoBv1
 
----Creates new instance of Dako BV1 distributor.
 ---@param auxResCapacity number
 ---@param cylinderCapacity number
 ---@return DakoBv1
@@ -143,8 +142,8 @@ function DakoBv1:new(auxResCapacity, cylinderCapacity)
         distributorValve = DistributorValve:new(),
         accelerationChamber = Reservoir:new(ACCEL_CHAMBER_CAPACITY),
         distributorRes = Reservoir:new(DIST_RES_CAPACITY),
-        auxiliaryRes = Reservoir:new(auxResCapacity or 100),
-        cylinder = Cylinder:new(cylinderCapacity or 10, CYLINDER_MAX_PRESSURE)
+        auxiliaryRes = Reservoir:new(auxResCapacity),
+        cylinder = Cylinder:new(cylinderCapacity, CYLINDER_MAX_PRESSURE)
     }
     obj = setmetatable(obj, self)
     obj.distributorRes.pressure = 5

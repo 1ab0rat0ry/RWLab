@@ -39,7 +39,6 @@ local DistributorValve = {
 DistributorValve.__index = DistributorValve
 DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
 
----Creates new instance of distributor valve.
 ---@return DistributorValve
 function DistributorValve:new()
     ---@type DistributorValve
@@ -79,6 +78,7 @@ function DistributorValve:update(timeDelta, brakePipe, overchargePressure)
         self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
     end
 end
+
 
 ---Selflapping driver's brake valve used mainly on older locomotives.
 ---@class DakoBs2
@@ -121,7 +121,6 @@ local DakoBs2 = {
 }
 DakoBs2.__index = DakoBs2
 
----Creates new instance of Dako BS2.
 ---@param notches table
 ---@return DakoBs2
 function DakoBs2:new(notches)
