@@ -1,119 +1,114 @@
-MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
+---@type MathUtil
+local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 
-local Easing = {}
+---@class Easings
+local Easings = {}
 
-function Easing:new()
-    o = {}
-    setmetatable(o, self)
-    self.__index = self
-    return o
+---@param factor number
+---@return number
+function Easings.sineIn(factor)
+    return 1 - math.cos(MathUtil.clamp(factor, 0, 1) * math.pi / 2)
 end
 
-function Easing.getProgress(duration, time)
-    return MathUtil.clamp(time / duration, 0, 1)
+---@param factor number
+---@return number
+function Easings.sineOut(factor)
+    return math.sin(MathUtil.clamp(factor, 0, 1) * math.pi / 2)
 end
 
-local Easings = {
-    Linear = Easing:new(),
-
-    SineOut = Easing:new(),
-
-    QuadraticIn = Easing:new(),
-
-    ElasticOut = {
-        frequency = 6,
-        amplitude = 1
-    }
-}
-
-function Easings.Linear:ease(old, new, duration, time)
-    return self.getProgress(duration, time) * (new - old) + old
+---@param factor number
+---@return number
+function Easings.quadIn(factor)
+    return MathUtil.clamp(factor, 0, 1) ^ 2
 end
 
-
-function Easings.sineIn(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return 1 - math.cos(progress * math.pi / 2)
+---@param factor number
+---@return number
+function Easings.quadOut(factor)
+    return 1 - (1 - MathUtil.clamp(factor, 0, 1)) ^ 2
 end
 
-function Easings.sineOut(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return math.sin(progress * math.pi / 2)
+---@param factor number
+---@return number
+function Easings.cubicIn(factor)
+    return MathUtil.clamp(factor, 0, 1) ^ 3
 end
 
-function Easings.quadIn(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return progress ^ 2
+---@param factor number
+---@return number
+function Easings.cubicOut(factor)
+    return 1 - (1 - MathUtil.clamp(factor, 0, 1)) ^ 3
 end
 
-function Easings.quadOut(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return 1 - (1 - progress) ^ 2
+---@param factor number
+---@return number
+function Easings.quartIn(factor)
+    return MathUtil.clamp(factor, 0, 1) ^ 4
 end
 
-function Easings.cubicIn(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return progress ^ 3
+---@param factor number
+---@return number
+function Easings.quartOut(factor)
+    return 1 - (1 - MathUtil.clamp(factor, 0, 1)) ^ 4
 end
 
-function Easings.cubicOut(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return 1 - (1 - progress) ^ 3
+---@param factor number
+---@return number
+function Easings.quintIn(factor)
+    return MathUtil.clamp(factor, 0, 1) ^ 5
 end
 
-function Easings.quartIn(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return progress ^ 4
+---@param factor number
+---@return number
+function Easings.quintOut(factor)
+    return 1 - (1 - MathUtil.clamp(factor, 0, 1)) ^ 5
 end
 
-function Easings.quartOut(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return 1 - (1 - progress) ^ 4
+---@param factor number
+---@return number
+function Easings.expIn(factor)
+    factor = MathUtil.clamp(factor, 0, 1)
+    return factor == 0 and 0 or 2 ^ (10 * factor - 10)
 end
 
-function Easings.quintIn(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return progress ^ 5
+---@param factor number
+---@param start number
+---@param finish number
+---@param control number
+function Easings.bezier(factor, start, finish, control)
+    factor = MathUtil.clamp(factor, 0, 1)
+    return (1 - factor) ^ 2 * start + 2 * (1 - factor) * factor * control + factor ^ 2 * finish
 end
 
-function Easings.quintOut(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return 1 - (1 - progress) ^ 5
+---@param factor number
+---@return number
+function Easings.expOut(factor)
+    factor = MathUtil.clamp(factor, 0, 1)
+    return factor ~= 0 and 1 - 2 ^ (-10 * factor) or 0
 end
 
-function Easing.expIn(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return progress == 0 and 0 or 2 ^ (10 * progress - 10)
+---@param factor number
+---@return number
+function Easings.circIn(factor)
+    return 1 - math.sqrt(1 - MathUtil.clamp(factor, 0, 1) ^ 2)
 end
 
-function Easing.expOut(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return progress == 0 and 0 or 1 - 2 ^ (-10 * progress)
+---@param factor number
+---@return number
+function Easings.circOut(factor)
+    return math.sqrt(1 - (MathUtil.clamp(factor, 0, 1) - 1) ^ 2)
 end
 
-function Easing.circIn(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return 1 - math.sqrt(1 - progress ^ 2)
-end
-
-function Easing.circOut(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return math.sqrt(1 - (progress - 1) ^ 2)
-end
-
-function Easings.bezier(progress, start, finish, control)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return (1 - progress) ^ 2 * start + 2 * (1 - progress) * progress * control + progress ^ 2 * finish
-end
-
-function Easings.elasticOut(progress)
-    progress = MathUtil.clamp(progress, 0, 1)
-    return 2 ^ (-10 * progress) * math.sin(math.pi * (6 * progress - 0.5)) + 1
+---@param factor number
+---@return number
+function Easings.elasticOut(factor)
+    factor = MathUtil.clamp(factor, 0, 1)
+    return 2 ^ (-10 * factor) * math.sin(math.pi * (6 * factor - 0.5)) + 1
 end
 
 -- function Easings.ElasticOut:ease(old, new, duration, time)
---     local progress = MathUtil.clamp(time / duration, 0, 1)
---     local animation = 2 ^ (-10 * progress) * math.sin(math.pi * (self.frequency * progress - 0.5)) + 1
+--     local factor = MathUtil.clamp(time / duration, 0, 1)
+--     local animation = 2 ^ (-10 * factor) * math.sin(math.pi * (self.frequency * factor - 0.5)) + 1
 --     return animation * (new - old) + old
 -- end
 
