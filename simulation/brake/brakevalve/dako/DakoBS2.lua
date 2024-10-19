@@ -1,8 +1,10 @@
 ---@type Reservoir
 local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
+---@type Easings
 local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 ---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
+---@type MovingAverage
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
 
 local REFERENCE_PRESSURE = 5
@@ -22,11 +24,11 @@ local OVERCHARGE_RES_EMPTY_RATE = 0.03
 
 ---Regulates pressure in brake pipe based on the pressure in control chamber.
 ---@class DistributorValve
----@field MAX_HYSTERESIS number
----@field hysteresis number
----@field position number
----@field controlChamber Reservoir
----@field average MovingAverage
+---@field private MAX_HYSTERESIS number
+---@field private hysteresis number
+---@field public position number
+---@field public controlChamber Reservoir
+---@field private average MovingAverage
 local DistributorValve = {
     MAX_HYSTERESIS = 0.1,
     hysteresis = 0,
@@ -79,15 +81,15 @@ function DistributorValve:update(timeDelta, brakePipe, overchargePressure)
 end
 
 ---Selflapping driver's brake valve used mainly on older locomotives.
----@class Bs2
----@field emergencyValve boolean
----@field interruptValve number
----@field releaseValve boolean
----@field distributorValve DistributorValve
----@field setPressure number
----@field controlRes Reservoir
----@field overchargeRes Reservoir
-local Bs2 = {
+---@class DakoBs2
+---@field private emergencyValve boolean
+---@field private interruptValve number
+---@field private releaseValve boolean
+---@field private distributorValve DistributorValve
+---@field private setPressure number
+---@field private controlRes Reservoir
+---@field private overchargeRes Reservoir
+local DakoBs2 = {
     notches = {
         RELEASE = 0,
         RUNNING = 0,
@@ -117,13 +119,13 @@ local Bs2 = {
 
     hasOvercharge = false
 }
-Bs2.__index = Bs2
+DakoBs2.__index = DakoBs2
 
 ---Creates new instance of Dako BS2.
 ---@param notches table
----@return Bs2
-function Bs2:new(notches)
-    ---@type Bs2
+---@return DakoBs2
+function DakoBs2:new(notches)
+    ---@type DakoBs2
     local obj = {
         notches = notches,
         distributorValve = DistributorValve:new(),
@@ -146,18 +148,20 @@ end
 ---@param timeDelta number
 ---@param feedPipe Reservoir
 ---@param brakePipe Reservoir
-function Bs2:update(timeDelta, feedPipe, brakePipe)
+function DakoBs2:update(timeDelta, feedPipe, brakePipe)
     self:updateControlMechanism(timeDelta, Call("GetControlValue", "VirtualBrake", 0), feedPipe, brakePipe)
+    self:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
     self:updateOvercharge(timeDelta, feedPipe, brakePipe)
 end
 
 ---Regulates pressure in control reservoir (control pressure)
 ---and operates release, interrupt and emergency valves based on handle position.
+---@private
 ---@param timeDelta number
 ---@param position number
 ---@param feedPipe Reservoir
 ---@param brakePipe Reservoir
-function Bs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
+function DakoBs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
     if position <= self.ranges.RELEASE then
         --fully open release valve to allow quick filling of brake pipe
         self.emergencyValve = false
@@ -210,14 +214,14 @@ function Bs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe)
     if self.releaseValve then self.distributorValve.controlChamber:equalize(feedPipe, timeDelta)
     else self.distributorValve.controlChamber:equalize(self.controlRes, timeDelta)
     end
-    self:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
 end
 
 ---Fills, empties and maintains pressure in brake pipe.
+---@private
 ---@param timeDelta number
 ---@param feedPipe Reservoir
 ---@param brakePipe Reservoir
-function Bs2:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
+function DakoBs2:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
     self.distributorValve:update(timeDelta, brakePipe, self.overchargeRes.pressure)
 
     if self.distributorValve.position > 0 then
@@ -231,10 +235,11 @@ end
 
 ---Fills overcharge reservoir when high-pressure release is active or overcharge button is pressed.
 ---Slowly bleeds pressure from the reservoir to remove overcharge in brake pipe.
+---@private
 ---@param timeDelta number
 ---@param feedPipe Reservoir
 ---@param brakePipe Reservoir
-function Bs2:updateOvercharge(timeDelta, feedPipe, brakePipe)
+function DakoBs2:updateOvercharge(timeDelta, feedPipe, brakePipe)
     if self.overchargeRes.pressure > 0 then self.overchargeRes:vent(timeDelta, OVERCHARGE_RES_EMPTY_RATE) end
     if self.distributorValve.controlChamber.pressure > 5.1 and self.distributorValve.position > 0.3 then
         self.overchargeRes:equalize(feedPipe, timeDelta, 0.5, OVERCHGARGE_RES_CAPACITY)
@@ -243,4 +248,4 @@ function Bs2:updateOvercharge(timeDelta, feedPipe, brakePipe)
     end
 end
 
-return Bs2
+return DakoBs2

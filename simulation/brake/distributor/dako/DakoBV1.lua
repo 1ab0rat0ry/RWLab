@@ -1,11 +1,14 @@
 ---@type Reservoir
 local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
+---@type Cylinder
 local Cylinder = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Cylinder.out"
+---@type Easings
 local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 ---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 ---@type MovingAverage
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
+---@type Stopwatch
 local Stopwatch = require "Assets/1ab0rat0ry/RWLab/utils/Stopwatch.out"
 
 local REFERENCE_PRESSURE = 5
@@ -37,12 +40,12 @@ local DISTRIBUTOR_SENSITIVITY = 0.1
 local DISTRIBUTOR_HYSTERESIS = 0.007
 
 ---@class DistributorValv
----@field MAX_HYSTERESIS number
----@field hysteresis number
----@field position number
----@field brakePipePressureLast number
----@field cylinderPressureTarget number
----@field average MovingAverage
+---@field private MAX_HYSTERESIS number
+---@field private hysteresis number
+---@field public position number
+---@field private brakePipePressureLast number
+---@field private cylinderPressureTarget number
+---@field private average MovingAverage
 local DistributorValve = {
     MAX_HYSTERESIS = 0.1,
     hysteresis = 0,
@@ -70,14 +73,16 @@ end
 ---Calculates target cylinder pressure and updates position accordingly.
 ---@param timeDelta number
 ---@param brakePipe Reservoir
----@param distributor Bv1
+---@param distributor DakoBv1
 function DistributorValve:update(timeDelta, brakePipe, distributor)
     ---@type number
     local cylinderPressureCalculated = (distributor.distributorRes.pressure - brakePipe.pressure) * CYLINDER_PRESSURE_COEF
 
     if brakePipe.pressure < self.brakePipePressureLast - DISTRIBUTOR_SENSITIVITY * timeDelta then
         self.cylinderPressureTarget = math.max(cylinderPressureCalculated, CYLINDER_INSHOT_PRESSURE)
-    else
+    elseif brakePipe.pressure < self.brakePipePressureLast then
+        self.cylinderPressureTarget = cylinderPressureCalculated
+    elseif brakePipe.pressure > self.brakePipePressureLast then
         self.cylinderPressureTarget = cylinderPressureCalculated
     end
     self.brakePipePressureLast = brakePipe.pressure
@@ -105,17 +110,17 @@ function DistributorValve:update(timeDelta, brakePipe, distributor)
     end
 end
 
----@class Bv1
----@field turnOffValve boolean
----@field distributorValve DistributorValv
----@field inshotValve number
----@field ventilationValve number
----@field acceleratorValve number
----@field accelerationChamber Reservoir
----@field distributorRes Reservoir
----@field auxiliaryRes Reservoir
----@field cylinder Reservoir
-local Bv1 = {
+---@class DakoBv1
+---@field private turnOffValve boolean
+---@field private distributorValve DistributorValv
+---@field private inshotValve number
+---@field private ventilationValve number
+---@field private acceleratorValve number
+---@field private accelerationChamber Reservoir
+---@field private distributorRes Reservoir
+---@field private auxiliaryRes Reservoir
+---@field public cylinder Reservoir
+local DakoBv1 = {
     turnOffValve = true,
     distributorValve = {},
     inshotValve = 1,
@@ -126,14 +131,14 @@ local Bv1 = {
     auxiliaryRes = {},
     cylinder = {}
 }
-Bv1.__index = Bv1
+DakoBv1.__index = DakoBv1
 
 ---Creates new instance of Dako BV1 distributor.
 ---@param auxResCapacity number
 ---@param cylinderCapacity number
----@return Bv1
-function Bv1:new(auxResCapacity, cylinderCapacity)
-    ---@type Bv1
+---@return DakoBv1
+function DakoBv1:new(auxResCapacity, cylinderCapacity)
+    ---@type DakoBv1
     local obj = {
         distributorValve = DistributorValve:new(),
         accelerationChamber = Reservoir:new(ACCEL_CHAMBER_CAPACITY),
@@ -151,7 +156,7 @@ end
 ---Updates the whole distributor.
 ---@param timeDelta number
 ---@param brakePipe Reservoir
-function Bv1:update(timeDelta, brakePipe)
+function DakoBv1:update(timeDelta, brakePipe)
     local brakePipeChamber = self.turnOffValve and brakePipe or Reservoir.atmosphere
 
     self:updateAcceleratorMechanism(timeDelta, brakePipeChamber)
@@ -161,9 +166,10 @@ function Bv1:update(timeDelta, brakePipe)
 end
 
 ---Accelerates propagation of the lower pressure waveby taking air from brake pipe into acceleration chamber.
+---@private
 ---@param timeDelta number
 ---@param brakePipe Reservoir
-function Bv1:updateAcceleratorMechanism(timeDelta, brakePipe)
+function DakoBv1:updateAcceleratorMechanism(timeDelta, brakePipe)
     if self.auxiliaryRes.pressure - brakePipe.pressure > ACCEL_VALVE_HYSTERESIS * timeDelta then
          self.acceleratorValve = math.min(1, self.acceleratorValve + 5 * timeDelta)
     else
@@ -181,27 +187,30 @@ function Bv1:updateAcceleratorMechanism(timeDelta, brakePipe)
 end
 
 ---Controls filling of distributor and auxiliary reservoir.
+---@private
 ---@param timeDelta number
 ---@param brakePipe Reservoir
-function Bv1:updateEqualizingMechanism(timeDelta, brakePipe)
+function DakoBv1:updateEqualizingMechanism(timeDelta, brakePipe)
     if self.cylinder.pressure > 0.05 then return end
     self.auxiliaryRes:equalize(brakePipe, timeDelta, AUX_RES_FILL_RATE, 100)
     self.distributorRes:equalize(brakePipe, timeDelta, DIST_RES_FILL_RATE, 9)
 end
 
 ---Refills auxiliary reservoir.
+---@private
 ---@param timeDelta number
 ---@param brakePipe Reservoir
-function Bv1:updateConnectingMechanism(timeDelta, brakePipe)
+function DakoBv1:updateConnectingMechanism(timeDelta, brakePipe)
     if self.auxiliaryRes.pressure + 0.01 < self.distributorRes.pressure then
         self.auxiliaryRes:fillFrom(brakePipe, timeDelta, AUX_RES_REFILL_RATE, 100)
     end
 end
 
 ---Regulates pressure in brake cylinder.
+---@private
 ---@param timeDelta number
 ---@param brakePipe Reservoir
-function Bv1:updateDistributorMechanism(timeDelta, brakePipe)
+function DakoBv1:updateDistributorMechanism(timeDelta, brakePipe)
     self.distributorValve:update(timeDelta, brakePipe, self)
 
     local inshotValve = MathUtil.inverseLerp(self.cylinder.pressure, CYLINDER_INSHOT_PRESSURE, CYLINDER_INSHOT_PRESSURE - 0.1)
@@ -215,4 +224,4 @@ function Bv1:updateDistributorMechanism(timeDelta, brakePipe)
     end
 end
 
-return Bv1
+return DakoBv1
