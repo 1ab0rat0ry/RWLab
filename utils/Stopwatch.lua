@@ -32,7 +32,6 @@ function Stopwatch:reset()
     self.lastReset = os.clock()
 end
 
-
 ---Return time since last reset.
 ---@return number
 function Stopwatch:getTime()
