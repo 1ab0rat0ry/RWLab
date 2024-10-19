@@ -10,6 +10,8 @@ local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
 ---@type Stopwatch
 local Stopwatch = require "Assets/1ab0rat0ry/RWLab/utils/Stopwatch.out"
+---@type DakoDistributorValve
+local DakoDistributorValve = require "Assets/1ab0rat0ry/RWLab/simulation/brake/dako/DakoDistributorValve.out"
 
 local REFERENCE_PRESSURE = 5
 
@@ -36,83 +38,12 @@ local ACCEL_VALVE_HYSTERESIS = 0.1
 local VENT_VALVE_CLOSE_PRESSURE = 0.4
 local VENT_VALVE_OPEN_PRESSURE = 0.2
 
-local DISTRIBUTOR_SENSITIVITY = 0.1
-local DISTRIBUTOR_HYSTERESIS = 0.007
-
----@class DistributorValv
----@field private MAX_HYSTERESIS number
----@field private hysteresis number
----@field public position number
----@field private brakePipePressureLast number
----@field private cylinderPressureTarget number
----@field private average MovingAverage
-local DistributorValve = {
-    MAX_HYSTERESIS = 0.1,
-    hysteresis = 0,
-    position = 0,
-    brakePipePressureLast = 0,
-    cylinderPressureTarget = 0,
-    average = {}
-}
-DistributorValve.__index = DistributorValve
-DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
-
----@return DistributorValv
-function DistributorValve:new()
-    ---@type DistributorValv
-    local obj = {
-        average = MovingAverage:new(2),
-        inshotStopwatch = Stopwatch:new(1)
-    }
-    obj = setmetatable(obj, self)
-
-    return obj
-end
-
----Calculates target cylinder pressure and updates position accordingly.
----@param timeDelta number
----@param brakePipe Reservoir
----@param distributor DakoBv1
-function DistributorValve:update(timeDelta, brakePipe, distributor)
-    ---@type number
-    local cylinderPressureCalculated = (distributor.distributorRes.pressure - brakePipe.pressure) * CYLINDER_PRESSURE_COEF
-
-    if brakePipe.pressure < self.brakePipePressureLast - DISTRIBUTOR_SENSITIVITY * timeDelta then
-        self.cylinderPressureTarget = math.max(cylinderPressureCalculated, CYLINDER_INSHOT_PRESSURE)
-    elseif brakePipe.pressure < self.brakePipePressureLast then
-        self.cylinderPressureTarget = cylinderPressureCalculated
-    elseif brakePipe.pressure > self.brakePipePressureLast then
-        self.cylinderPressureTarget = cylinderPressureCalculated
-    end
-    self.brakePipePressureLast = brakePipe.pressure
-
-    local pressureDiff = self.cylinderPressureTarget - distributor.cylinder.pressure
-    local pressureLimit = Easings.sineOut(CYLINDER_MAX_PRESSURE - distributor.cylinder.pressure)
-    local positionTarget = MathUtil.clamp(2 * pressureDiff, -1, pressureLimit)
-    local positionDelta = math.abs(positionTarget - self.position)
-
-    if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + timeDelta / 10)
-    elseif positionDelta > 0.001 then
-        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * timeDelta)
-    end
-    self.average:sample(positionTarget)
-
-    local positionDiff = self.average:get() - self.position
-
-    if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
-        self.position = 0
-    elseif self.position < positionTarget - self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
-    elseif self.position > positionTarget + self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
-    end
-end
-
+local SENSITIVITY = 0.1
+local HYSTERESIS = 0.007
 
 ---@class DakoBv1
 ---@field private turnOffValve boolean
----@field private distributorValve DistributorValv
+---@field private distributorValve DakoDistributorValve
 ---@field private inshotValve number
 ---@field private ventilationValve number
 ---@field private acceleratorValve number
@@ -139,7 +70,7 @@ DakoBv1.__index = DakoBv1
 function DakoBv1:new(auxResCapacity, cylinderCapacity)
     ---@type DakoBv1
     local obj = {
-        distributorValve = DistributorValve:new(),
+        distributorValve = DakoDistributorValve:new(CYLINDER_PRESSURE_COEF, CYLINDER_INSHOT_PRESSURE, CYLINDER_MAX_PRESSURE, SENSITIVITY, HYSTERESIS),
         accelerationChamber = Reservoir:new(ACCEL_CHAMBER_CAPACITY),
         distributorRes = Reservoir:new(DIST_RES_CAPACITY),
         auxiliaryRes = Reservoir:new(auxResCapacity),
