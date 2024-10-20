@@ -202,13 +202,13 @@ function DakoBs2:updateControlMechanism(timeDelta, position, feedPipe, brakePipe
 
     --equalize control reservoir to set pressure
     if self.setPressure > self.controlRes.pressure then
-        self.controlRes:equalize(feedPipe, timeDelta, changeRate)
+        self.controlRes:equalize(feedPipe, timeDelta, 1, changeRate)
     elseif self.setPressure < self.controlRes.pressure then
-        self.controlRes:vent(timeDelta, changeRate)
+        self.controlRes:vent(timeDelta, 1, changeRate)
     end
 
     --quickly vent brake pipe
-    if self.emergencyValve then brakePipe:vent(timeDelta, nil, 70) end
+    if self.emergencyValve then brakePipe:vent(timeDelta, 70) end
     --connect control chamber with feed pipe or control reservoir
     if self.releaseValve then self.distributorValve.controlChamber:equalize(feedPipe, timeDelta)
     else self.distributorValve.controlChamber:equalize(self.controlRes, timeDelta)
@@ -225,10 +225,10 @@ function DakoBs2:updateDistributorMechanism(timeDelta, feedPipe, brakePipe)
 
     if self.distributorValve.position > 0 then
         local fillRate = 30 * Easings.sineOut(math.min(self.interruptValve, math.abs(self.distributorValve.position)))
-        brakePipe:equalize(feedPipe, timeDelta, nil, fillRate)
+        brakePipe:equalize(feedPipe, timeDelta, fillRate)
     elseif self.distributorValve.position < 0 then
         local emptyRate = 20 * Easings.sineOut(math.abs(self.distributorValve.position))
-        brakePipe:vent(timeDelta, nil, emptyRate)
+        brakePipe:vent(timeDelta, emptyRate)
     end
 end
 
@@ -241,9 +241,9 @@ end
 function DakoBs2:updateOvercharge(timeDelta, feedPipe, brakePipe)
     if self.overchargeRes.pressure > 0 then self.overchargeRes:vent(timeDelta, OVERCHARGE_RES_EMPTY_RATE) end
     if self.distributorValve.controlChamber.pressure > 5.1 and self.distributorValve.position > 0.3 then
-        self.overchargeRes:equalize(feedPipe, timeDelta, 0.5, OVERCHGARGE_RES_CAPACITY)
+        self.overchargeRes:equalize(feedPipe, timeDelta, OVERCHGARGE_RES_CAPACITY, 0.5)
     elseif self.hasOvercharge and Call("GetControlValue", "Overcharge", 0) > 0.5 then
-        self.overchargeRes:equalize(brakePipe, OVERCHARGE_RES_FILL_RATE, OVERCHGARGE_RES_CAPACITY)
+        self.overchargeRes:equalize(brakePipe, OVERCHGARGE_RES_CAPACITY, OVERCHARGE_RES_FILL_RATE)
     end
 end
 

@@ -38,6 +38,7 @@ local ACCEL_VALVE_HYSTERESIS = 0.1
 local VENT_VALVE_CLOSE_PRESSURE = 0.4
 local VENT_VALVE_OPEN_PRESSURE = 0.2
 
+local RELEASE_PRESSURE = 4.84
 local SENSITIVITY = 0.1
 local HYSTERESIS = 0.007
 
@@ -48,7 +49,7 @@ local HYSTERESIS = 0.007
 ---@field private ventilationValve number
 ---@field private acceleratorValve number
 ---@field private accelerationChamber Reservoir
----@field private distributorRes Reservoir
+---@field public distributorRes Reservoir
 ---@field private auxiliaryRes Reservoir
 ---@field public cylinder Reservoir
 local DakoBv1 = {
@@ -70,7 +71,7 @@ DakoBv1.__index = DakoBv1
 function DakoBv1:new(auxResCapacity, cylinderCapacity)
     ---@type DakoBv1
     local obj = {
-        distributorValve = DakoDistributorValve:new(CYLINDER_PRESSURE_COEF, CYLINDER_INSHOT_PRESSURE, CYLINDER_MAX_PRESSURE, SENSITIVITY, HYSTERESIS),
+        distributorValve = DakoDistributorValve:new(CYLINDER_PRESSURE_COEF, CYLINDER_INSHOT_PRESSURE, CYLINDER_MAX_PRESSURE, RELEASE_PRESSURE, SENSITIVITY, HYSTERESIS),
         accelerationChamber = Reservoir:new(ACCEL_CHAMBER_CAPACITY),
         distributorRes = Reservoir:new(DIST_RES_CAPACITY),
         auxiliaryRes = Reservoir:new(auxResCapacity),
@@ -112,8 +113,8 @@ function DakoBv1:updateAcceleratorMechanism(timeDelta, brakePipe)
         self.ventilationValve = math.min(1, self.ventilationValve + timeDelta)
     end
 
-    self.accelerationChamber:equalize(brakePipe, timeDelta, 10 * Easings.sineOut(self.acceleratorValve), 10)
-    self.accelerationChamber:vent(timeDelta, 5 * Easings.sineOut(self.ventilationValve), 5)
+    self.accelerationChamber:equalize(brakePipe, timeDelta, 10 * Easings.sineOut(self.acceleratorValve))
+    self.accelerationChamber:vent(timeDelta, 5 * Easings.sineOut(self.ventilationValve))
 end
 
 ---Controls filling of distributor and auxiliary reservoir.
@@ -122,8 +123,8 @@ end
 ---@param brakePipe Reservoir
 function DakoBv1:updateEqualizingMechanism(timeDelta, brakePipe)
     if self.cylinder.pressure > 0.05 then return end
-    self.auxiliaryRes:equalize(brakePipe, timeDelta, AUX_RES_FILL_RATE, 100)
-    self.distributorRes:equalize(brakePipe, timeDelta, DIST_RES_FILL_RATE, 9)
+    self.auxiliaryRes:equalize(brakePipe, timeDelta,100, AUX_RES_FILL_RATE)
+    self.distributorRes:equalize(brakePipe, timeDelta, 9, DIST_RES_FILL_RATE)
 end
 
 ---Refills auxiliary reservoir.
@@ -132,7 +133,7 @@ end
 ---@param brakePipe Reservoir
 function DakoBv1:updateConnectingMechanism(timeDelta, brakePipe)
     if self.auxiliaryRes.pressure + 0.01 < self.distributorRes.pressure then
-        self.auxiliaryRes:fillFrom(brakePipe, timeDelta, AUX_RES_REFILL_RATE, 100)
+        self.auxiliaryRes:fillFrom(brakePipe, timeDelta, 100, AUX_RES_REFILL_RATE)
     end
 end
 
@@ -147,10 +148,10 @@ function DakoBv1:updateDistributorMechanism(timeDelta, brakePipe)
 
     if self.distributorValve.position > 0 then
         local fillRate = math.min(CYLINDER_FILL_RATE, 2 * Easings.sineOut(math.abs(self.distributorValve.position))) + 10 * Easings.sineOut(self.distributorValve.position * inshotValve)
-        self.cylinder:equalize(self.auxiliaryRes, timeDelta, fillRate, 20)
+        self.cylinder:equalize(self.auxiliaryRes, timeDelta, 20, fillRate)
     elseif self.distributorValve.position < 0 then
         local emptyRate = math.min(CYLINDER_EMPTY_RATE, 2 * Easings.sineOut(math.abs(self.distributorValve.position)))
-        self.cylinder:vent(timeDelta, emptyRate, 10)
+        self.cylinder:vent(timeDelta, 10, emptyRate)
     end
 end
 

@@ -40,7 +40,7 @@ function Consist:update(timeDelta)
         local nextVehicle = self.vehicles.elements[self.vehicleCount - i]
 
         if nextVehicle == nil then break end
-        vehicle.brakePipe:equalize(nextVehicle.brakePipe, timeDelta, nil, 100)
+        vehicle.brakePipe:equalize(nextVehicle.brakePipe, timeDelta, 100)
     end
 
     for _, vehicle in ipairs(self.vehicles.elements) do
