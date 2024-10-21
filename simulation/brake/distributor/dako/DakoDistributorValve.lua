@@ -58,16 +58,16 @@ function DakoDistributorValve:new(pressureCoef, inshotPressure, maxPressure, rel
 end
 
 ---Calculates target cylinder pressure and updates position accordingly.
----@param timeDelta number
+---@param deltaTime number
 ---@param brakePipe Reservoir
 ---@param distributor DakoBv1
-function DakoDistributorValve:update(timeDelta, brakePipe, distributor)
+function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
     local releasePressure = math.max(0, distributor.distributorRes.pressure - self.releasePressureDelta)
     local pressureCalculated = (distributor.distributorRes.pressure - brakePipe.pressure) * self.pressureCoef
 
-    if brakePipe.pressure < self.brakePipePressureLast - self.sensitivity * timeDelta then
+    if brakePipe.pressure < self.brakePipePressureLast - self.sensitivity * deltaTime then
         self.pressureTarget = math.max(pressureCalculated, self.inshotPressure)
-    elseif brakePipe.pressure < self.brakePipePressureLast - self.insensitivity * timeDelta then
+    elseif brakePipe.pressure < self.brakePipePressureLast - self.insensitivity * deltaTime then
         self.pressureTarget = pressureCalculated
     elseif brakePipe.pressure > distributor.distributorRes.pressure - releasePressure then
         self.pressureTarget = 0
@@ -82,9 +82,9 @@ function DakoDistributorValve:update(timeDelta, brakePipe, distributor)
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + timeDelta / 10)
+        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + deltaTime / 10)
     elseif positionDelta > 0.001 then
-        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * timeDelta)
+        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
     end
     self.average:sample(positionTarget)
 
@@ -93,9 +93,9 @@ function DakoDistributorValve:update(timeDelta, brakePipe, distributor)
     if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
         self.position = 0
     elseif self.position < positionTarget - self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
+        self.position = self.position + MathUtil.clamp(positionDiff, -deltaTime, deltaTime)
     elseif self.position > positionTarget + self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
+        self.position = self.position + MathUtil.clamp(positionDiff, -deltaTime, deltaTime)
     end
 end
 

@@ -57,10 +57,10 @@ end
 
 ---Equalizes pressure in two reservoirs.
 ---@param reservoir Reservoir
----@param timeDelta number
+---@param deltaTime number
 ---@param maxPressureChangeRate number
 ---@param flowCoef number
-function Reservoir:equalize(reservoir, timeDelta, flowCoef, maxPressureChangeRate)
+function Reservoir:equalize(reservoir, deltaTime, flowCoef, maxPressureChangeRate)
     flowCoef = flowCoef or 1
     maxPressureChangeRate = maxPressureChangeRate or 1e10
 
@@ -68,27 +68,27 @@ function Reservoir:equalize(reservoir, timeDelta, flowCoef, maxPressureChangeRat
     local maxFlow = self.capacity * maxPressureChangeRate
     local flow = pressureCoef * flowCoef
 
-    flow = math.min(flow, maxFlow) * timeDelta
+    flow = math.min(flow, maxFlow) * deltaTime
     self:transferVolume(reservoir, flow)
 end
 
 ---Fills reservoir on which it is called from `source`.
 ---@param source Reservoir
----@param timeDelta number
+---@param deltaTime number
 ---@param maxPressureChangeRate number
 ---@param flowMultiplier number
-function Reservoir:fillFrom(source, timeDelta, flowCoef, maxPressureChangeRate)
+function Reservoir:fillFrom(source, deltaTime, flowCoef, maxPressureChangeRate)
     if source.pressure <= self.pressure then return end
-    self:equalize(source, timeDelta, flowCoef, maxPressureChangeRate)
+    self:equalize(source, deltaTime, flowCoef, maxPressureChangeRate)
 end
 
 ---Empties reservoir.
----@param timeDelta number
+---@param deltaTime number
 ---@param maxPressureChangeRate number
 ---@param flowMultiplier number
-function Reservoir:vent(timeDelta, flowCoef, maxPressureChangeRate)
+function Reservoir:vent(deltaTime, flowCoef, maxPressureChangeRate)
     self.atmosphere.pressure = 0
-    self:equalize(self.atmosphere, timeDelta, flowCoef, maxPressureChangeRate)
+    self:equalize(self.atmosphere, deltaTime, flowCoef, maxPressureChangeRate)
 end
 
 ---Gets volume of air in reservoir.

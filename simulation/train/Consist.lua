@@ -8,7 +8,8 @@ local ArrayList = require "Assets/1ab0rat0ry/RWLab/utils/ArrayList.out"
 local Consist = {
     length = 0,
     vehicleCount = 0,
-    vehicles = ArrayList
+    vehicles = ArrayList,
+    simulationSteps = 0
 }
 Consist.__index = Consist
 
@@ -16,7 +17,8 @@ Consist.__index = Consist
 function Consist:new()
     ---@type Consist
     local obj = {
-        vehicles = ArrayList:new()
+        vehicles = ArrayList:new(),
+        simulationSteps = 0
     }
     obj = setmetatable(obj, self)
 
@@ -31,20 +33,23 @@ function Consist:addVehicle(vehicle)
 end
 
 ---Updates all vehicles in consist and propagates brake pipe.
----@param timeDelta number
-function Consist:update(timeDelta)
-    local simulationSteps = math.floor(60 * timeDelta)
-    local simulationPartialSteps = 60 * timeDelta - simulationSteps
+---@param deltaTime number
+function Consist:update(deltaTime)
+    self.simulationSteps = self.simulationSteps + 60 * deltaTime
+    --local simulationPartialSteps = 60 * deltaTime - simulationSteps
 
-    for i, vehicle in ipairs(self.vehicles:reversed()) do
-        local nextVehicle = self.vehicles.elements[self.vehicleCount - i]
+    while self.simulationSteps >= 1 do
+        for i, vehicle in ipairs(self.vehicles:reversed()) do
+            local nextVehicle = self.vehicles.elements[self.vehicleCount - i]
 
-        if nextVehicle == nil then break end
-        vehicle.brakePipe:equalize(nextVehicle.brakePipe, timeDelta, 100)
+            if nextVehicle == nil then break end
+            vehicle.brakePipe:equalize(nextVehicle.brakePipe, 0.0167, 50)
+        end
+        self.simulationSteps = self.simulationSteps - 1
     end
 
     for _, vehicle in ipairs(self.vehicles.elements) do
-        vehicle:update(timeDelta)
+        vehicle:update(deltaTime)
     end
 end
 

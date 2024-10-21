@@ -47,10 +47,10 @@ function Vehicle:new(length)
 end
 
 ---Updates all systems and devices of vehicle.
----@param timeDelta number
-function Vehicle:update(timeDelta)
-    if self.brakeValve then self.brakeValve:update(timeDelta, self.feedPipe, self.brakePipe) end
-    if self.distributor then self.distributor:update(timeDelta, self.brakePipe) end
+---@param deltaTime number
+function Vehicle:update(deltaTime)
+    if self.brakeValve then self.brakeValve:update(deltaTime, self.feedPipe, self.brakePipe) end
+    if self.distributor then self.distributor:update(deltaTime, self.brakePipe) end
 end
 
 ---Calculates brake force.

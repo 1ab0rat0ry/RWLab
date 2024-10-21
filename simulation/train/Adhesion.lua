@@ -80,10 +80,10 @@ function Adhesion:initialise(temperature, precipitationType, precipitationDensit
     self.randomCoef = MathUtil.randomFloat(-0.05, 0.05)
 end
 
-function Adhesion:update(timeDelta, temperature, precipitationType, precipitationDensity)
-    self:updateEnvironmentCoef(timeDelta, temperature, precipitationType, precipitationDensity)
-    self:updateAmbientCoef(timeDelta, precipitationDensity)
-    self:updateSandingCoef(timeDelta)
+function Adhesion:update(deltaTime, temperature, precipitationType, precipitationDensity)
+    self:updateEnvironmentCoef(deltaTime, temperature, precipitationType, precipitationDensity)
+    self:updateAmbientCoef(deltaTime, precipitationDensity)
+    self:updateSandingCoef(deltaTime)
 
     self.totalCoef = self.ambientCoef + self.sandingCoef
 end
@@ -99,7 +99,7 @@ function Adhesion:getEnvironmentCoefTarget(temperature, precipitationType, preci
     return CoefValues.CLEAR, CoefTimes.CLEAR
 end
 
-function Adhesion:updateEnvironmentCoef(timeDelta, temperature, precipitationType, precipitationDensity)
+function Adhesion:updateEnvironmentCoef(deltaTime, temperature, precipitationType, precipitationDensity)
     local newEnvironmentCoefTarget, coefChangeTime = self:getEnvironmentCoefTarget(temperature, precipitationType, precipitationDensity)
 
     if self.environmentCoefTarget ~= newEnvironmentCoefTarget then
@@ -110,23 +110,23 @@ function Adhesion:updateEnvironmentCoef(timeDelta, temperature, precipitationTyp
 
     if self.environmentCoef ~= self.environmentCoefTarget then
         local coefDiff = self.environmentCoefTarget - self.environmentCoef
-        local coefChangeRate = timeDelta / coefChangeTime
+        local coefChangeRate = deltaTime / coefChangeTime
         self.environmentCoef = self.environmentCoef + MathUtil.clamp(coefDiff, -coefChangeRate, coefChangeRate)
     end
 end
 
-function Adhesion:updateWheelCoef(timeDelta)
+function Adhesion:updateWheelCoef(deltaTime)
     
 end
 
-function Adhesion:updateAmbientCoef(timeDelta, precipitationDensity)
+function Adhesion:updateAmbientCoef(deltaTime, precipitationDensity)
     local oscillationChance = (0.1 + precipitationDensity) * math.abs(Call("GetSpeed")) * 3.6 / 500
     self.ambientCoef = self.environmentCoef
 
     if Call("GetIsInTunnel") > 0 then
         local maxTunnelTime = TUNNEL_DIST_FOR_MAX_COEF / math.abs(Call("GetSpeed"))
-        self.tunnelTime = math.min(maxTunnelTime, self.tunnelTime + timeDelta)
-    else self.tunnelTime = math.max(0, self.tunnelTime - timeDelta)
+        self.tunnelTime = math.min(maxTunnelTime, self.tunnelTime + deltaTime)
+    else self.tunnelTime = math.max(0, self.tunnelTime - deltaTime)
     end
 
     if self.tunnelTime > 0 then
@@ -143,7 +143,7 @@ function Adhesion:updateAmbientCoef(timeDelta, precipitationDensity)
 
     if self.randomCoef ~= self.randomCoefTarget then
         local coefDiff = self.randomCoefTarget - self.randomCoef
-        local changeRate = timeDelta / 1000
+        local changeRate = deltaTime / 1000
         self.randomCoef = self.randomCoef + MathUtil.clamp(coefDiff, -changeRate, changeRate)
     end
 
@@ -161,7 +161,7 @@ function Adhesion:updateAmbientCoef(timeDelta, precipitationDensity)
         local coefDiff = self.oscillationCoefTarget - self.oscillationCoef
         local changeRate = coefDiff < 0 and COEF_LOSE_RATE or COEF_RECOVER_RATE
 
-        changeRate = changeRate * (math.abs(coefDiff) + 0.5) * math.random() * timeDelta
+        changeRate = changeRate * (math.abs(coefDiff) + 0.5) * math.random() * deltaTime
         self.oscillationCoef = self.oscillationCoef + MathUtil.clamp(coefDiff, -changeRate, changeRate)
     else self.oscillationCoefTarget = 1
     end
@@ -170,11 +170,11 @@ function Adhesion:updateAmbientCoef(timeDelta, precipitationDensity)
     self.ambientCoef = self.ambientCoef * self.oscillationCoef * self.wheelCoef
 end
 
-function Adhesion:updateSandingCoef(timeDelta)
+function Adhesion:updateSandingCoef(deltaTime)
     if self.sanding then
         local maxSandingTime = SANDING_DIST_FOR_MAX_COEF / math.abs(Call("GetSpeed"))
-        self.sandingTime = math.min(maxSandingTime, self.sandingTime + timeDelta)
-    else self.sandingTime = math.max(0, self.sandingTime - timeDelta)
+        self.sandingTime = math.min(maxSandingTime, self.sandingTime + deltaTime)
+    else self.sandingTime = math.max(0, self.sandingTime - deltaTime)
     end
 
     local sandingDist = math.abs(Call("GetSpeed")) * self.sandingTime
