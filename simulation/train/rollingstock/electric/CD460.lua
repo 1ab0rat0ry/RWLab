@@ -25,7 +25,7 @@ local Cd460 = {}
 ---@return Cd460
 function Cd460:new()
     ---@type Cd460
-    local obj = Vehicle:new(LENGTH, MAIN_RES_CAPACITY)
+    local obj = Vehicle:new(LENGTH)
 
     obj:addFeedPipe(MAIN_RES_CAPACITY)
     obj:addDistributor(Bv1:new(AUX_RES_CAPACITY, CYLINDER_CAPACITY))
