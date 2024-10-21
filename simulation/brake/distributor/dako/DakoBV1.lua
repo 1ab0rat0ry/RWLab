@@ -6,12 +6,8 @@ local Cylinder = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Cylind
 local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 ---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
----@type MovingAverage
-local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
----@type Stopwatch
-local Stopwatch = require "Assets/1ab0rat0ry/RWLab/utils/Stopwatch.out"
 ---@type DakoDistributorValve
-local DakoDistributorValve = require "Assets/1ab0rat0ry/RWLab/simulation/brake/dako/DakoDistributorValve.out"
+local DakoDistributorValve = require "Assets/1ab0rat0ry/RWLab/simulation/brake/distributor/dako/DakoDistributorValve.out"
 
 local REFERENCE_PRESSURE = 5
 

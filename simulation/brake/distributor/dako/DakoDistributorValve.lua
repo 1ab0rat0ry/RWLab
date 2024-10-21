@@ -4,8 +4,6 @@ local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 ---@type MovingAverage
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
----@type Stopwatch
-local Stopwatch = require "Assets/1ab0rat0ry/RWLab/utils/Stopwatch.out"
 
 local REFERENCE_PRESSURE = 5
 
@@ -20,7 +18,7 @@ local REFERENCE_PRESSURE = 5
 ---@field private inshotPressure number
 ---@field private maxPressure number
 ---@field private average MovingAverage
-local DistributorValve = {
+local DakoDistributorValve = {
     MAX_HYSTERESIS = 0.1,
     hysteresis = 0,
     sensitivity = 0,
@@ -34,8 +32,8 @@ local DistributorValve = {
     maxPressure = 0,
     average = {}
 }
-DistributorValve.__index = DistributorValve
-DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
+DakoDistributorValve.__index = DakoDistributorValve
+DakoDistributorValve.hysteresis = DakoDistributorValve.MAX_HYSTERESIS
 
 ---@param pressureCoef number
 ---@param inshotPressure number
@@ -43,7 +41,7 @@ DistributorValve.hysteresis = DistributorValve.MAX_HYSTERESIS
 ---@param releasePressure number pressure at which distributor switches to charging position when brake pipe pressure before braking was `5 bar`
 ---@param sensitivity number
 ---@param insensitivity number
-function DistributorValve:new(pressureCoef, inshotPressure, maxPressure, releasePressure, sensitivity, insensitivity)
+function DakoDistributorValve:new(pressureCoef, inshotPressure, maxPressure, releasePressure, sensitivity, insensitivity)
     ---@type DakoDistributorValve
     local obj = {
         sensitivity = sensitivity,
@@ -63,7 +61,7 @@ end
 ---@param timeDelta number
 ---@param brakePipe Reservoir
 ---@param distributor DakoBv1
-function DistributorValve:update(timeDelta, brakePipe, distributor)
+function DakoDistributorValve:update(timeDelta, brakePipe, distributor)
     local releasePressure = math.max(0, distributor.distributorRes.pressure - self.releasePressureDelta)
     local pressureCalculated = (distributor.distributorRes.pressure - brakePipe.pressure) * self.pressureCoef
 
@@ -100,3 +98,5 @@ function DistributorValve:update(timeDelta, brakePipe, distributor)
         self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
     end
 end
+
+return DakoDistributorValve
