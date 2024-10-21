@@ -13,10 +13,10 @@ local Cd063 = {}
 ---@return Cd063
 function Cd063:new()
     ---@type Cd063
-    local obj = Vehicle:new(LENGTH, Bv1:new(AUX_RES_CAPACITY, CYLINDER_CAPACITY))
+    local obj = Vehicle:new(LENGTH)
 
     obj:addFeedPipe()
-    obj:addDistributor(Bv1:new())
+    obj:addDistributor(Bv1:new(AUX_RES_CAPACITY, CYLINDER_CAPACITY))
 
     return obj
 end

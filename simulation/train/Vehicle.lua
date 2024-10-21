@@ -38,7 +38,7 @@ function Vehicle:new(length)
     local obj = {
         length = length,
         pipeCapacity = (10 * length + 4 * HOSE_LENGTH) * PIPE_CROSS_SECTION_AREA,
-        brakePipe = Reservoir:new(self.pipeCapacity),
+        brakePipe = Reservoir:new((10 * length + 4 * HOSE_LENGTH) * PIPE_CROSS_SECTION_AREA),
     }
     obj = setmetatable(obj, self)
     obj.brakePipe.pressure = 5

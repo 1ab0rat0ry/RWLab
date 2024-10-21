@@ -8,7 +8,7 @@ local ArrayList = require "Assets/1ab0rat0ry/RWLab/utils/ArrayList.out"
 local Consist = {
     length = 0,
     vehicleCount = 0,
-    vehicles = {}
+    vehicles = ArrayList
 }
 Consist.__index = Consist
 
