@@ -65,37 +65,26 @@ function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
     local releasePressure = math.max(0, distributor.distributorRes.pressure - self.releasePressureDelta)
     local pressureCalculated = (distributor.distributorRes.pressure - brakePipe.pressure) * self.pressureCoef
 
-    if brakePipe.pressure < self.brakePipePressureLast - self.sensitivity * deltaTime then
-        self.pressureTarget = math.max(pressureCalculated, self.inshotPressure)
-    elseif brakePipe.pressure < self.brakePipePressureLast - self.insensitivity * deltaTime then
+    if brakePipe.pressure < self.brakePipePressureLast then
         self.pressureTarget = pressureCalculated
-    elseif brakePipe.pressure > distributor.distributorRes.pressure - releasePressure then
+    elseif brakePipe.pressure > releasePressure then
         self.pressureTarget = 0
     elseif brakePipe.pressure > self.brakePipePressureLast then
         self.pressureTarget = pressureCalculated
     end
     self.brakePipePressureLast = brakePipe.pressure
 
+    local inshot = MathUtil.inverseLerp(distributor.cylinder.pressure, self.inshotPressure, self.inshotPressure - 0.1)
     local pressureDiff = self.pressureTarget - distributor.cylinder.pressure
     local pressureLimit = Easings.sineOut(self.maxPressure - distributor.cylinder.pressure)
-    local positionTarget = MathUtil.clamp(2 * pressureDiff, -1, pressureLimit)
-    local positionDelta = math.abs(positionTarget - self.position)
+    local positionTarget = MathUtil.clamp((2 + inshot) * pressureDiff, -1, pressureLimit + inshot)
 
-    if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + deltaTime / 10)
-    elseif positionDelta > 0.001 then
-        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
-    end
     self.average:sample(positionTarget)
-
-    local positionDiff = self.average:get() - self.position
 
     if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
         self.position = 0
-    elseif self.position < positionTarget - self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -deltaTime, deltaTime)
-    elseif self.position > positionTarget + self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -deltaTime, deltaTime)
+    else
+        self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
     end
 end
 
