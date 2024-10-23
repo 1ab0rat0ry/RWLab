@@ -1,7 +1,5 @@
 ---@type Reservoir
 local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
----@type Easings
-local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 ---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 ---@type MovingAverage
@@ -48,7 +46,7 @@ function DistributorValve:new()
     ---@type DistributorValve
     local obj = {
         controlChamber = Reservoir:new(0.3),
-        average = MovingAverage:new(2)
+        average = MovingAverage:new(10)
     }
     obj = setmetatable(obj, self)
     obj.controlChamber.pressure = 5
@@ -72,14 +70,12 @@ function DistributorValve:update(deltaTime, brakePipe, overchargePressure)
     end
     self.average:sample(positionTarget)
 
-    local positionDiff = self.average:get() - self.position
-
     if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
         self.position = 0
     elseif self.position < positionTarget - self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -deltaTime, deltaTime)
+        self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
     elseif self.position > positionTarget + self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -deltaTime, deltaTime)
+        self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
     end
 end
 
@@ -202,7 +198,7 @@ function DakoBs2:updateControlMechanism(deltaTime, position, feedPipe, brakePipe
         self.releaseValve = false
     end
 
-    local changeRate = CONTROL_RES_CHANGE_RATE * Easings.sineOut(4 * math.abs(self.setPressure - self.controlRes.pressure))
+    local changeRate = CONTROL_RES_CHANGE_RATE * 4 * math.abs(self.setPressure - self.controlRes.pressure)
 
     --equalize control reservoir to set pressure
     if self.setPressure > self.controlRes.pressure then
@@ -228,10 +224,10 @@ function DakoBs2:updateDistributorMechanism(deltaTime, feedPipe, brakePipe)
     self.distributorValve:update(deltaTime, brakePipe, self.overchargeRes.pressure)
 
     if self.distributorValve.position > 0 then
-        local fillRate = FILL_RATE * Easings.sineOut(math.min(self.interruptValve, self.distributorValve.position))
+        local fillRate = FILL_RATE * math.min(self.interruptValve, self.distributorValve.position)
         brakePipe:equalize(feedPipe, deltaTime, fillRate)
     elseif self.distributorValve.position < 0 then
-        local emptyRate = EMPTY_RATE * Easings.sineOut(math.abs(self.distributorValve.position))
+        local emptyRate = EMPTY_RATE * math.abs(self.distributorValve.position)
         brakePipe:vent(deltaTime, emptyRate)
     end
 end
@@ -245,9 +241,9 @@ end
 function DakoBs2:updateOvercharge(deltaTime, feedPipe, brakePipe)
     if self.overchargeRes.pressure > 0 then self.overchargeRes:vent(deltaTime, 1, OVERCHARGE_RES_EMPTY_RATE) end
     if self.distributorValve.controlChamber.pressure > 5.1 and self.distributorValve.position > 0.3 then
-        self.overchargeRes:equalize(feedPipe, deltaTime, OVERCHGARGE_RES_CAPACITY / 2)
+        self.overchargeRes:equalize(feedPipe, deltaTime, 0.335)
     elseif self.hasOvercharge and Call("GetControlValue", "Overcharge", 0) > 0.5 then
-        self.overchargeRes:equalize(brakePipe, OVERCHGARGE_RES_CAPACITY, OVERCHARGE_RES_FILL_RATE)
+        self.overchargeRes:equalize(brakePipe, deltaTime, 0.335)
     end
 end
 

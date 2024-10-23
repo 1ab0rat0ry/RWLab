@@ -4,6 +4,8 @@ local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 ---@type MovingAverage
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
+---@type Stopwatch
+local Stopwatch = require "Assets/1ab0rat0ry/RWLab/utils/Stopwatch.out"
 
 local REFERENCE_PRESSURE = 5
 
@@ -30,6 +32,7 @@ local DakoDistributorValve = {
     pressureTarget = 0,
     inshotPressure = 0,
     maxPressure = 0,
+    inshotStopwatch = {},
     average = {}
 }
 DakoDistributorValve.__index = DakoDistributorValve
@@ -50,6 +53,7 @@ function DakoDistributorValve:new(pressureCoef, inshotPressure, maxPressure, rel
         pressureCoef = pressureCoef,
         inshotPressure = inshotPressure,
         maxPressure = maxPressure,
+        inshotStopwatch = Stopwatch:new(1),
         average = MovingAverage:new(2)
     }
     obj = setmetatable(obj, self)
@@ -66,24 +70,35 @@ function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
     local pressureCalculated = (distributor.distributorRes.pressure - brakePipe.pressure) * self.pressureCoef
 
     if brakePipe.pressure < self.brakePipePressureLast then
-        self.pressureTarget = pressureCalculated
+        if self.inshotStopwatch:hasFinished() then
+            self.pressureTarget = pressureCalculated
+        end
     elseif brakePipe.pressure > releasePressure then
         self.pressureTarget = 0
+        self.inshotStopwatch:reset()
     elseif brakePipe.pressure > self.brakePipePressureLast then
+        if distributor.cylinder.pressure < self.inshotPressure then self.inshotStopwatch:reset() end
         self.pressureTarget = pressureCalculated
     end
     self.brakePipePressureLast = brakePipe.pressure
 
-    local inshot = MathUtil.inverseLerp(distributor.cylinder.pressure, self.inshotPressure, self.inshotPressure - 0.1)
     local pressureDiff = self.pressureTarget - distributor.cylinder.pressure
     local pressureLimit = Easings.sineOut(self.maxPressure - distributor.cylinder.pressure)
-    local positionTarget = MathUtil.clamp((2 + inshot) * pressureDiff, -1, pressureLimit + inshot)
+    local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, pressureLimit)
+    local positionDelta = math.abs(positionTarget - self.position)
 
+    if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
+        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + deltaTime / 10)
+    elseif positionDelta > 0.001 then
+        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
+    end
     self.average:sample(positionTarget)
 
     if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
         self.position = 0
-    else
+    elseif self.position < positionTarget - self.hysteresis then
+        self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
+    elseif self.position > positionTarget + self.hysteresis then
         self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
     end
 end

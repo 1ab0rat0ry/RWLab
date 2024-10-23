@@ -1,5 +1,10 @@
 ---@type ArrayList
 local ArrayList = require "Assets/1ab0rat0ry/RWLab/utils/ArrayList.out"
+local Logger = require "Assets/1ab0rat0ry/RWLab/utils/Logger.out"
+
+local DEBUG = false
+
+local logger = Logger:new(DEBUG, "BrakePipe.log")
 
 ---@class Consist
 ---@field public length number
@@ -8,8 +13,7 @@ local ArrayList = require "Assets/1ab0rat0ry/RWLab/utils/ArrayList.out"
 local Consist = {
     length = 0,
     vehicleCount = 0,
-    vehicles = ArrayList,
-    simulationSteps = 0
+    vehicles = ArrayList
 }
 Consist.__index = Consist
 
@@ -17,8 +21,7 @@ Consist.__index = Consist
 function Consist:new()
     ---@type Consist
     local obj = {
-        vehicles = ArrayList:new(),
-        simulationSteps = 0
+        vehicles = ArrayList:new()
     }
     obj = setmetatable(obj, self)
 
@@ -35,22 +38,18 @@ end
 ---Updates all vehicles in consist and propagates brake pipe.
 ---@param deltaTime number
 function Consist:update(deltaTime)
-    self.simulationSteps = self.simulationSteps + 60 * deltaTime
-    --local simulationPartialSteps = 60 * deltaTime - simulationSteps
+    for i, vehicle in ipairs(self.vehicles:reversed()) do
+        local nextVehicle = self.vehicles.elements[self.vehicleCount - i]
 
-    while self.simulationSteps >= 1 do
-        for i, vehicle in ipairs(self.vehicles:reversed()) do
-            local nextVehicle = self.vehicles.elements[self.vehicleCount - i]
-
-            if nextVehicle == nil then break end
-            vehicle.brakePipe:equalize(nextVehicle.brakePipe, 0.0167, 50)
-        end
-        self.simulationSteps = self.simulationSteps - 1
+        if nextVehicle == nil then break end
+        vehicle.brakePipe:equalize(nextVehicle.brakePipe, deltaTime, 100)
+        logger:info("I: "..i.." BPP: "..vehicle.brakePipe.pressure.." CP: "..vehicle.distributor.cylinder.pressure.." ARP: "..vehicle.distributor.auxiliaryRes.pressure.." ACP: "..vehicle.distributor.accelerationChamber.pressure)
     end
 
     for _, vehicle in ipairs(self.vehicles.elements) do
         vehicle:update(deltaTime)
     end
+    logger:info("")
 end
 
 ---Calculates brake force of the whole consist.

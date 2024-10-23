@@ -33,7 +33,8 @@ end
 ---@param minPressure number
 ---@param maxPressure number
 function Reservoir:changePressure(flow, minPressure, maxPressure)
-    self.pressure = MathUtil.clamp(self.pressure + flow / self.capacity, minPressure, maxPressure)
+    -- self.pressure = MathUtil.clamp(self.pressure + flow / self.capacity, minPressure, maxPressure)
+    self.pressure = self.pressure + flow / self.capacity
 end
 
 ---Handles volume transfer between reservoirs.
