@@ -9,6 +9,9 @@ local Stopwatch = require "Assets/1ab0rat0ry/RWLab/utils/Stopwatch.out"
 
 local REFERENCE_PRESSURE = 5
 
+local MAX_HYSTERESIS = 0.1
+local MIN_HYSTERESIS = 0.001
+
 ---@class DakoDistributorValve
 ---@field private MAX_HYSTERESIS number
 ---@field private hysteresis number
@@ -21,7 +24,6 @@ local REFERENCE_PRESSURE = 5
 ---@field private maxPressure number
 ---@field private average MovingAverage
 local DakoDistributorValve = {
-    MAX_HYSTERESIS = 0.1,
     hysteresis = 0,
     position = 0,
     brakePipePressureLast = 0,
@@ -78,9 +80,9 @@ function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + deltaTime / 10)
+        self.hysteresis = math.min(MAX_HYSTERESIS, self.hysteresis + deltaTime / 10)
     elseif positionDelta > 0.001 then
-        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
+        self.hysteresis = math.max(MIN_HYSTERESIS, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
     end
     self.average:sample(positionTarget)
 
