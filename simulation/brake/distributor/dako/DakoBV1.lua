@@ -4,6 +4,8 @@ local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reser
 local Cylinder = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Cylinder.out"
 ---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
+---@type Easings
+local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
 ---@type DakoDistributorValve
 local DakoDistributorValve = require "Assets/1ab0rat0ry/RWLab/simulation/brake/distributor/dako/DakoDistributorValve.out"
 
@@ -35,8 +37,6 @@ local VENT_VALVE_OPEN_THRESHOLD = 0.2
 
 local CHARGE_THRESHOLD = 0.05
 local RELEASE_THRESHOLD = 4.84
-local SENSITIVITY = 0.1
-local HYSTERESIS = 0.007
 
 ---@class DakoBv1
 ---@field private turnOffValve boolean
@@ -67,7 +67,7 @@ DakoBv1.__index = DakoBv1
 function DakoBv1:new(auxResCapacity, cylinderCapacity)
     ---@type DakoBv1
     local obj = {
-        distributorValve = DakoDistributorValve:new(CYLINDER_PRESSURE_COEF, CYLINDER_INSHOT_PRESSURE, CYLINDER_MAX_PRESSURE, RELEASE_THRESHOLD, SENSITIVITY, HYSTERESIS),
+        distributorValve = DakoDistributorValve:new(CYLINDER_PRESSURE_COEF, CYLINDER_INSHOT_PRESSURE, RELEASE_THRESHOLD),
         accelerationChamber = Reservoir:new(ACCEL_CHAMBER_CAPACITY),
         distributorRes = Reservoir:new(DIST_RES_CAPACITY),
         auxiliaryRes = Reservoir:new(auxResCapacity),
@@ -139,7 +139,8 @@ function DakoBv1:updateDistributorMechanism(deltaTime, brakePipe)
     local inshotValve = MathUtil.inverseLerp(self.cylinder.pressure, CYLINDER_INSHOT_PRESSURE, CYLINDER_INSHOT_PRESSURE - 0.1)
 
     if self.distributorValve.position > 0 then
-        local fillRate = math.min(CYLINDER_FILL_RATE, 2 * math.abs(self.distributorValve.position)) + 10 * self.distributorValve.position * inshotValve
+        local pressureLimit = Easings.sineOut(CYLINDER_MAX_PRESSURE - self.cylinder.pressure)
+        local fillRate = math.min(CYLINDER_FILL_RATE, 2 * math.abs(self.distributorValve.position) * pressureLimit) + 10 * self.distributorValve.position * inshotValve
         self.cylinder:equalize(self.auxiliaryRes, deltaTime, 20, fillRate)
     elseif self.distributorValve.position < 0 then
         local emptyRate = math.min(CYLINDER_EMPTY_RATE, 2 * math.abs(self.distributorValve.position))

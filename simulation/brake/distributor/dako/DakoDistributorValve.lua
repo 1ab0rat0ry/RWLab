@@ -23,15 +23,12 @@ local REFERENCE_PRESSURE = 5
 local DakoDistributorValve = {
     MAX_HYSTERESIS = 0.1,
     hysteresis = 0,
-    sensitivity = 0,
-    insensitivity = 0,
     position = 0,
     brakePipePressureLast = 0,
     releasePressureDelta = 0,
     pressureCoef = 0,
     pressureTarget = 0,
     inshotPressure = 0,
-    maxPressure = 0,
     inshotStopwatch = {},
     average = {}
 }
@@ -40,19 +37,13 @@ DakoDistributorValve.hysteresis = DakoDistributorValve.MAX_HYSTERESIS
 
 ---@param pressureCoef number
 ---@param inshotPressure number
----@param maxPressure number
 ---@param releasePressure number pressure at which distributor switches to charging position when brake pipe pressure before braking was `5 bar`
----@param sensitivity number
----@param insensitivity number
-function DakoDistributorValve:new(pressureCoef, inshotPressure, maxPressure, releasePressure, sensitivity, insensitivity)
+function DakoDistributorValve:new(pressureCoef, inshotPressure, releasePressure)
     ---@type DakoDistributorValve
     local obj = {
-        sensitivity = sensitivity,
-        insensitivity = insensitivity,
         releasePressureDelta = REFERENCE_PRESSURE - releasePressure,
         pressureCoef = pressureCoef,
         inshotPressure = inshotPressure,
-        maxPressure = maxPressure,
         inshotStopwatch = Stopwatch:new(1),
         average = MovingAverage:new(2)
     }
@@ -83,8 +74,7 @@ function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
     self.brakePipePressureLast = brakePipe.pressure
 
     local pressureDiff = self.pressureTarget - distributor.cylinder.pressure
-    local pressureLimit = Easings.sineOut(self.maxPressure - distributor.cylinder.pressure)
-    local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, pressureLimit)
+    local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, 1)
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
