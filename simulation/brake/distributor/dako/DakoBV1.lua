@@ -97,7 +97,7 @@ end
 ---@param deltaTime number
 ---@param brakePipe Reservoir
 function DakoBv1:updateAcceleratorMechanism(deltaTime, brakePipe)
-    self.acceleratorValve = MathUtil.inverseLerp(self.auxiliaryRes.pressure - brakePipe.pressure, ACCEL_VALVE_HYSTERESIS, 0.3)
+    self.acceleratorValve = MathUtil.inverseLerp(self.auxiliaryRes.pressure - brakePipe.pressure, ACCEL_VALVE_HYSTERESIS, 0.1)
 
     if self.cylinder.pressure > VENT_VALVE_CLOSE_THRESHOLD then
         self.ventilationValve = math.max(0, self.ventilationValve - deltaTime)
