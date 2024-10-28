@@ -53,7 +53,7 @@ function Environment:initialise()
     self.temperature = self.tempTarget
 end
 
-function Environment:update(timeDelta)
+function Environment:update(deltaTime)
     self.timeOfDay = SysCall("ScenarioManager:GetTimeOfDay") / SECONDS_IN_DAY
     self.precipitationType = SysCall("WeatherController:GetCurrentPrecipitationType")
     self.precipitationIntensity = SysCall("WeatherController:GetPrecipitationDensity")

@@ -1,31 +1,45 @@
-local MovingAverage = {}
+---@class MovingAverage
+---@field sampleSize number
+---@field sampleIndex number
+---@field samples table
+local MovingAverage = {
+    sampleSize = 0,
+    sampleIndex = 1,
+    samples = {}
+}
+MovingAverage.__index = MovingAverage
 
-MovingAverage.sampleSize = 0
-MovingAverage.sampleIndex = 1
-MovingAverage.samples = {}
-
+---@param sampleSize number
+---@return MovingAverage
 function MovingAverage:new(sampleSize)
-    local o = setmetatable({}, self)
-    self.__index = self
-    o.sampleSize = sampleSize
-    o.samples = {}
-    return o
+    ---@type MovingAverage
+    local obj = {
+        sampleSize = sampleSize,
+        samples = {}
+    }
+    obj = setmetatable(obj, self)
+
+    return obj
 end
 
-function MovingAverage:add(sample)
+---Takes sample for calculating moving average.
+---@param sample number
+function MovingAverage:sample(sample)
     self.samples[self.sampleIndex] = sample
     self.sampleIndex = self.sampleIndex == self.sampleSize and 1 or self.sampleIndex + 1
 end
 
+---Calculates moving average from samples.
+---@return number
 function MovingAverage:get()
-    local sum = 0
-    local k = 1
+    local sum, i = 0, 1
 
-    while self.samples[k] ~= nil do
-        sum = sum + self.samples[k]
-        k = k + 1
+    while self.samples[i] ~= nil do
+        sum = sum + self.samples[i]
+        i = i + 1
     end
-    return sum / (k - 1)
+
+    return sum / (i - 1)
 end
 
 return MovingAverage

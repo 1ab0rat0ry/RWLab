@@ -24,11 +24,11 @@ function Lever:addNotch(position, arretated, name)
     self[name] = notchIndex
 end
 
-function Lever:update(timeDelta)
+function Lever:update(deltaTime)
     if Call("GetControlValue", self.controlNameUp, 0) > 0.5 then
-        self.position = math.min(self.minPos, self.position + self.speed * timeDelta)
+        self.position = math.min(self.minPos, self.position + self.speed * deltaTime)
     elseif Call("GetControlValue", self.controlNameDown, 0) > 0.5 then
-        self.position = math.max(self.maxPos, self.position - self.speed * timeDelta)
+        self.position = math.max(self.maxPos, self.position - self.speed * deltaTime)
     end
 end
 

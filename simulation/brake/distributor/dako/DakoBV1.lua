@@ -1,19 +1,25 @@
+---@type Reservoir
 local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
+---@type Cylinder
 local Cylinder = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Cylinder.out"
-local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
+---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
-local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
-local Stopwatch = require "Assets/1ab0rat0ry/RWLab/utils/Stopwatch.out"
+---@type Easings
+local Easings = require "Assets/1ab0rat0ry/RWLab/utils/Easings.out"
+---@type DakoDistributorValve
+local DakoDistributorValve = require "Assets/1ab0rat0ry/RWLab/simulation/brake/distributor/dako/DakoDistributorValve.out"
 
 local REFERENCE_PRESSURE = 5
 
 local DIST_RES_FILL_TIME = 180
 local DIST_RES_FILL_RATE = REFERENCE_PRESSURE / DIST_RES_FILL_TIME
+local DIST_RES_CAPACITY = 9
 
 local AUX_RES_FILL_TIME = 180
 local AUX_RES_FILL_RATE = REFERENCE_PRESSURE / AUX_RES_FILL_TIME
 local AUX_RES_REFILL_TIME = 19
 local AUX_RES_REFILL_RATE = 1 / AUX_RES_REFILL_TIME
+local AUX_RES_REFILL_THRESHOLD = 0.1
 
 local CYLINDER_MAX_PRESSURE = 3.8
 local CYLINDER_PRESSURE_COEF = 2.533
@@ -22,141 +28,123 @@ local CYLINDER_FILL_TIME = 3.6
 local CYLINDER_EMPTY_TIME = 16
 local CYLINDER_FILL_RATE = 0.95 * CYLINDER_MAX_PRESSURE / CYLINDER_FILL_TIME
 local CYLINDER_EMPTY_RATE = 0.895 * CYLINDER_MAX_PRESSURE / CYLINDER_EMPTY_TIME
-local DISTRIBUTOR_SENSITIVITY = 0.1
-local DISTRIBUTOR_HYSTERESIS = 0.007
 
-local DistributorValve = {}
+local ACCEL_CHAMBER_CAPACITY = 0.46
+local ACCEL_VALVE_HYSTERESIS = 0.02
 
-DistributorValve.maxHysteresis = 0
-DistributorValve.hysteresis = 0
-DistributorValve.position = 0
-DistributorValve.cylinderPressureTarget = 0
-DistributorValve.brakePipePressureLast = 0
-DistributorValve.average = {}
+local VENT_VALVE_CLOSE_THRESHOLD = 0.4
+local VENT_VALVE_OPEN_THRESHOLD = 0.2
 
-function DistributorValve:new(maxHysteresis, inshotDelay)
-    local o = setmetatable({}, self)
-    self.__index = self
-    o.maxHysteresis = maxHysteresis
-    o.hysteresis = maxHysteresis
-    o.average = MovingAverage:new(2)
-    o.inshotStopwatch = Stopwatch:new(inshotDelay)
-    return o
+local CHARGE_THRESHOLD = 0.1
+local RELEASE_THRESHOLD = 4.84
+
+---@class DakoBv1
+---@field private turnOffValve boolean
+---@field private distributorValve DakoDistributorValve
+---@field private inshotValve number
+---@field private ventilationValve number
+---@field private acceleratorValve number
+---@field private accelerationChamber Reservoir
+---@field public distributorRes Reservoir
+---@field private auxiliaryRes Reservoir
+---@field public cylinder Reservoir
+local DakoBv1 = {
+    turnOffValve = true,
+    distributorValve = {},
+    inshotValve = 1,
+    ventilationValve = 1,
+    acceleratorValve = 0,
+    accelerationChamber = {},
+    distributorRes = {},
+    auxiliaryRes = {},
+    cylinder = {}
+}
+DakoBv1.__index = DakoBv1
+
+---@param auxResCapacity number
+---@param cylinderCapacity number
+---@return DakoBv1
+function DakoBv1:new(auxResCapacity, cylinderCapacity)
+    ---@type DakoBv1
+    local obj = {
+        distributorValve = DakoDistributorValve:new(CYLINDER_PRESSURE_COEF, CYLINDER_INSHOT_PRESSURE, RELEASE_THRESHOLD),
+        accelerationChamber = Reservoir:new(ACCEL_CHAMBER_CAPACITY),
+        distributorRes = Reservoir:new(DIST_RES_CAPACITY),
+        auxiliaryRes = Reservoir:new(auxResCapacity),
+        cylinder = Cylinder:new(cylinderCapacity, CYLINDER_MAX_PRESSURE)
+    }
+    obj = setmetatable(obj, self)
+    obj.distributorRes.pressure = 5
+    obj.auxiliaryRes.pressure = 5
+
+    return obj
 end
 
-local Bv1 = {}
+---Updates the whole distributor.
+---@param deltaTime number
+---@param brakePipe Reservoir
+function DakoBv1:update(deltaTime, brakePipe)
+    local brakePipeChamber = self.turnOffValve and brakePipe or Reservoir.atmosphere
 
-Bv1.turnOffValve = true
-Bv1.distributorValve = DistributorValve
-Bv1.inshotValve = 1
-Bv1.ventilationValve = 1
-Bv1.acceleratorValve = 0
-
-Bv1.accelerationChamber = Reservoir
-Bv1.distributorRes = Reservoir
-Bv1.auxiliaryRes = Reservoir
-Bv1.cylinder = Cylinder
-
-function Bv1:new()
-    local o = setmetatable({}, self)
-    self.__index = self
-    o.distributorValve = DistributorValve:new(0.1, 1)
-    o.accelerationChamber = Reservoir:new(0.46)
-    o.distributorRes = Reservoir:new(9)
-    o.auxiliaryRes = Reservoir:new(100)
-    o.cylinder = Cylinder:new(10, CYLINDER_MAX_PRESSURE)
-    o.distributorRes.pressure = 5
-    o.auxiliaryRes.pressure = 5
-    return o
+    self:updateAcceleratorMechanism(deltaTime, brakePipeChamber)
+    self:updateEqualizingMechanism(deltaTime, brakePipeChamber)
+    self:updateConnectingMechanism(deltaTime, brakePipeChamber)
+    self:updateDistributorMechanism(deltaTime, brakePipeChamber)
 end
 
-function Bv1:update(timeDelta, brakePipe)
-    local brakePipe = self.turnOffValve and brakePipe or Reservoir.atmosphere
+---Accelerates propagation of the lower pressure wave by taking air from brake pipe into acceleration chamber.
+---@private
+---@param deltaTime number
+---@param brakePipe Reservoir
+function DakoBv1:updateAcceleratorMechanism(deltaTime, brakePipe)
+    self.acceleratorValve = MathUtil.inverseLerp(self.auxiliaryRes.pressure - brakePipe.pressure, ACCEL_VALVE_HYSTERESIS, 0.3)
 
-    self:updateAcceleratorMechanism(timeDelta, brakePipe)
-    self:updateEqualizingMechanism(timeDelta, brakePipe)
-    self:updateConnectingMechanism(timeDelta, brakePipe)
-    self:updateDistributorMechanism(timeDelta, brakePipe)
-end
-
-function Bv1:updateAcceleratorMechanism(timeDelta, brakePipe)
-    if self.auxiliaryRes.pressure - brakePipe.pressure > 0.06 * timeDelta then
-        self.acceleratorValve = math.min(1, self.acceleratorValve + 5 * timeDelta)
-    else
-        self.acceleratorValve = math.max(0, self.acceleratorValve - timeDelta)
+    if self.cylinder.pressure > VENT_VALVE_CLOSE_THRESHOLD then
+        self.ventilationValve = math.max(0, self.ventilationValve - deltaTime)
+    elseif self.cylinder.pressure < VENT_VALVE_OPEN_THRESHOLD then
+        self.ventilationValve = math.min(1, self.ventilationValve + deltaTime)
     end
+    self.accelerationChamber:equalize(brakePipe, deltaTime, 2 * self.acceleratorValve)
+    self.accelerationChamber:vent(deltaTime, self.ventilationValve)
+end
 
-    if self.cylinder.pressure > 0.4 then
-        self.ventilationValve = math.max(0, self.ventilationValve - timeDelta)
-    elseif self.cylinder.pressure < 0.2 then
-        self.ventilationValve = math.min(1, self.ventilationValve + timeDelta)
+---Controls filling of distributor and auxiliary reservoir.
+---@private
+---@param deltaTime number
+---@param brakePipe Reservoir
+function DakoBv1:updateEqualizingMechanism(deltaTime, brakePipe)
+    if self.cylinder.pressure > CHARGE_THRESHOLD then return end
+    self.auxiliaryRes:equalize(brakePipe, deltaTime, 1.863)
+    self.distributorRes:equalize(brakePipe, deltaTime, 0.168)
+end
+
+---Refills auxiliary reservoir.
+---@private
+---@param deltaTime number
+---@param brakePipe Reservoir
+function DakoBv1:updateConnectingMechanism(deltaTime, brakePipe)
+    if self.auxiliaryRes.pressure + AUX_RES_REFILL_THRESHOLD < self.distributorRes.pressure then
+        self.auxiliaryRes:fillFrom(brakePipe, deltaTime, 9.5, AUX_RES_REFILL_RATE)
     end
-
-    self.accelerationChamber:equalize(brakePipe, timeDelta, 10 * Easings.sineOut(self.acceleratorValve), 10)
-    self.accelerationChamber:vent(timeDelta, 5 * Easings.sineOut(self.ventilationValve), 5)
 end
 
-function Bv1:updateEqualizingMechanism(timeDelta, brakePipe)
-    if self.cylinder.pressure > 0.05 then return end
-    self.auxiliaryRes:equalize(brakePipe, timeDelta, AUX_RES_FILL_RATE, 100)
-    self.distributorRes:equalize(brakePipe, timeDelta, DIST_RES_FILL_RATE, 9)
-end
-
-function Bv1:updateConnectingMechanism(timeDelta, brakePipe)
-    if self.auxiliaryRes.pressure + 0.001 < self.distributorRes.pressure then
-        self.auxiliaryRes:fillFrom(brakePipe, timeDelta, AUX_RES_REFILL_RATE, 100)
-    end
-end
-
-function Bv1:updateDistributorMechanism(timeDelta, brakePipe)
-    self.distributorValve:update(timeDelta, brakePipe, self)
+---Regulates pressure in brake cylinder.
+---@private
+---@param deltaTime number
+---@param brakePipe Reservoir
+function DakoBv1:updateDistributorMechanism(deltaTime, brakePipe)
+    self.distributorValve:update(deltaTime, brakePipe, self)
 
     local inshotValve = MathUtil.inverseLerp(self.cylinder.pressure, CYLINDER_INSHOT_PRESSURE, CYLINDER_INSHOT_PRESSURE - 0.1)
 
     if self.distributorValve.position > 0 then
-        local fillRate = math.min(CYLINDER_FILL_RATE, 2 * Easings.sineOut(math.abs(self.distributorValve.position))) + 10 * Easings.sineOut(self.distributorValve.position * inshotValve)
-        self.cylinder:equalize(self.auxiliaryRes, timeDelta, fillRate, 20)
+        local pressureLimit = Easings.sineOut(CYLINDER_MAX_PRESSURE - self.cylinder.pressure)
+        local fillRate = math.min(CYLINDER_FILL_RATE, 2 * math.abs(self.distributorValve.position) * pressureLimit) + 10 * self.distributorValve.position * inshotValve
+        self.cylinder:equalize(self.auxiliaryRes, deltaTime, 20, fillRate)
     elseif self.distributorValve.position < 0 then
-        local emptyRate = math.min(CYLINDER_EMPTY_RATE, 2 * Easings.sineOut(math.abs(self.distributorValve.position)))
-        self.cylinder:vent(timeDelta, emptyRate, 10)
+        local emptyRate = math.min(CYLINDER_EMPTY_RATE, 2 * math.abs(self.distributorValve.position))
+        self.cylinder:vent(deltaTime, 10, emptyRate)
     end
 end
 
-function Bv1.distributorValve:update(timeDelta, brakePipe, bv1)
-    local cylinderPressureCalculated = (bv1.distributorRes.pressure - brakePipe.pressure) * CYLINDER_PRESSURE_COEF
-
-    if brakePipe.pressure < self.brakePipePressureLast then
-        if brakePipe.pressure < self.brakePipePressureLast - 0.1 * timeDelta then
-            self.cylinderPressureTarget = math.max(cylinderPressureCalculated, CYLINDER_INSHOT_PRESSURE)
-        else
-            self.cylinderPressureTarget = cylinderPressureCalculated
-        end
-    elseif brakePipe.pressure > self.brakePipePressureLast then
-        self.cylinderPressureTarget = cylinderPressureCalculated
-    end
-    self.brakePipePressureLast = brakePipe.pressure
-
-    local pressureDiff = self.cylinderPressureTarget - bv1.cylinder.pressure
-    local pressureLimit = Easings.sineOut(CYLINDER_MAX_PRESSURE - bv1.cylinder.pressure)
-    local positionTarget = MathUtil.clamp(2 * pressureDiff, -1, pressureLimit)
-    local positionDelta = math.abs(positionTarget - self.position)
-
-    if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(self.maxHysteresis, self.hysteresis + timeDelta / 100)
-    elseif positionDelta > 0.001 then
-        self.hysteresis = math.max(0, self.hysteresis - math.sqrt(positionDelta) * timeDelta)
-    end
-    self.average:add(positionTarget)
-
-    local positionDiff = self.average:get() - self.position
-
-    if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
-        self.position = 0
-    elseif self.position < positionTarget - self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
-    elseif self.position > positionTarget + self.hysteresis then
-        self.position = self.position + MathUtil.clamp(positionDiff, -timeDelta, timeDelta)
-    end
-end
-
-return Bv1
+return DakoBv1

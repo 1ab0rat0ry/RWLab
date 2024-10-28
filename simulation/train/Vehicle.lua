@@ -1,39 +1,60 @@
+---@type Reservoir
 local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reservoir.out"
+---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 
-local PIPE_DIAMETER = 0.3175 -- dm
-local PIPE_RADIUS = PIPE_DIAMETER / 2
-local PIPE_CROSS_SECTION_AREA = math.pi * PIPE_RADIUS ^ 2
-local HOSE_LENGTH = 5 -- dm
+local PIPE_DIAMETER = 0.3175 --decimetres
+local PIPE_RADIUS = PIPE_DIAMETER / 2 --decimetres
+local PIPE_CROSS_SECTION_AREA = math.pi * PIPE_RADIUS ^ 2 --decimetres
+local HOSE_LENGTH = 5 --decimetres
 
-local Vehicle = {}
+---@class Vehicle
+---@field private length number
+---@field private pipeCapcity number
+---@field private brakePipe Reservoir
+---@field private feedPipe Reservoir
+---@field private brakeValve table
+---@field private distributor table
+---@field private accelerator table
+local Vehicle = {
+    length = 0,
+    pipeCapacity = 0,
+    --brakeBlocks = 0,
+    --maxPressureForcePerBlock = 0,
+    --maxBrakeForce = 0,
 
-Vehicle.length = 0
-Vehicle.pipeCapacity = 0
+    brakePipe = {},
+    feedPipe = nil,
+    brakeValve = nil,
+    distributor = nil,
+    accelerator = nil
+}
+Vehicle.__index = Vehicle
 
-Vehicle.brakePipe = {}
-Vehicle.feedPipe = nil
-Vehicle.brakeValve = nil
-Vehicle.distributor = nil
-Vehicle.accelerator = nil
-
+---@param length number
+---@return Vehicle
 function Vehicle:new(length)
-    local o = setmetatable({}, self)
+    ---@type Vehicle
+    local obj = {
+        length = length,
+        pipeCapacity = (10 * length + 4 * HOSE_LENGTH) * PIPE_CROSS_SECTION_AREA,
+        brakePipe = Reservoir:new((10 * length + 4 * HOSE_LENGTH) * PIPE_CROSS_SECTION_AREA),
+    }
+    obj = setmetatable(obj, self)
+    obj.brakePipe.pressure = 5
 
-    self.__index = self
-    self.pipeCapacity = (10 * length + 4 * HOSE_LENGTH) * PIPE_CROSS_SECTION_AREA
-    o.brakePipe = Reservoir:new(self.pipeCapacity)
-    o.length = length
-    o.brakePipe.pressure = 5
-
-    return o
+    return obj
 end
 
-function Vehicle:update(timeDelta)
-    if self.brakeValve then self.brakeValve:update(timeDelta, self.feedPipe, self.brakePipe) end
-    if self.distributor then self.distributor:update(timeDelta, self.brakePipe) end
+---Updates all systems and devices of vehicle.
+---@param deltaTime number
+function Vehicle:update(deltaTime)
+    if self.brakeValve then self.brakeValve:update(deltaTime, self.feedPipe, self.brakePipe) end
+    if self.distributor then self.distributor:update(deltaTime, self.brakePipe) end
 end
 
+---Calculates brake force.
+---@return number brake force expressed as number between `0` and `1`
 function Vehicle:getBrakeControl()
     -- local cylinderDiameter = 60.96 --cm
     -- local cylinderRadius = cylinderDiameter / 2 --cm
@@ -47,18 +68,22 @@ function Vehicle:getBrakeControl()
     return brakePadPressure
 end
 
+---@param mainResCapacity number
 function Vehicle:addFeedPipe(mainResCapacity)
     self.feedPipe = Reservoir:new(self.pipeCapacity + (mainResCapacity or 0))
 end
 
+---@param distributor table
 function Vehicle:addDistributor(distributor)
     self.distributor = distributor
 end
 
+---@param brakeValve table
 function Vehicle:addBrakeValve(brakeValve)
     self.brakeValve = brakeValve
 end
 
+---@param accelerator table
 function Vehicle:addAccelerator(accelerator)
     self.accelerator = accelerator
 end
