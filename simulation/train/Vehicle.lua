@@ -51,6 +51,7 @@ end
 function Vehicle:update(deltaTime)
     if self.brakeValve then self.brakeValve:update(deltaTime, self.feedPipe, self.brakePipe) end
     if self.distributor then self.distributor:update(deltaTime, self.brakePipe) end
+    if self.accelerator then self.accelerator:update(deltaTime, self.brakePipe, self.distributor) end
 end
 
 ---Calculates brake force.

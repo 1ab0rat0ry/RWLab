@@ -1,9 +1,9 @@
 ---@type Vehicle
 local Vehicle = require "Assets/1ab0rat0ry/RWLab/simulation/train/Vehicle.out"
 ---@type DakoBv1
-local Bv1 = require "Assets/1ab0rat0ry/RWLab/simulation/brake/distributor/dako/DakoBV1.out"
+local DakoBv1 = require "Assets/1ab0rat0ry/RWLab/simulation/brake/distributor/dako/DakoBV1.out"
 ---@type DakoBs2
-local Bs2 = require "Assets/1ab0rat0ry/RWLab/simulation/brake/brakevalve/dako/DakoBS2.out"
+local DakoBs2 = require "Assets/1ab0rat0ry/RWLab/simulation/brake/brakevalve/dako/DakoBS2.out"
 
 local LENGTH = 24.5
 local MAIN_RES_CAPACITY = 400
@@ -28,8 +28,8 @@ function Cd460:new()
     local obj = Vehicle:new(LENGTH)
 
     obj:addFeedPipe(MAIN_RES_CAPACITY)
-    obj:addDistributor(Bv1:new(AUX_RES_CAPACITY, CYLINDER_CAPACITY))
-    obj:addBrakeValve(Bs2:new(BS2_NOTCHES))
+    obj:addDistributor(DakoBv1:new(AUX_RES_CAPACITY, CYLINDER_CAPACITY))
+    obj:addBrakeValve(DakoBs2:new(BS2_NOTCHES))
 
     return obj
 end
