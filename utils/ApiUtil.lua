@@ -19,6 +19,76 @@ function ApiUtil.isExpertMode() return Call("IsExpertMode") end
 
 
 --Rail vehicle
+---Is the rail vehicle controlled by the player.
+---@return number If the train is player controlled `1`, if the train is AI controlled `0`.
+function ApiUtil.getIsPlayer() return Call("GetIsPlayer") end
+
+---Get the rail vehicle's current speed.
+---@return number The speed in metres per second.
+function ApiUtil.getSpeed() return Call("GetSpeed") end
+
+---Get the rail vehicle's acceleration.
+---@return number The acceleration in metres per second squared.
+function ApiUtil.getAcceleration() return Call("GetAcceleration") end
+
+---Get the total mass of the rail vehicle including cargo.
+---@return number The mass in kilograms.
+function ApiUtil.getTotalMass() return Call("GetTotalMass") end
+
+---Get the total mass of the entire consist including cargo.
+---@return number The mass in kilograms.
+function ApiUtil.getConsistTotalMass() return Call("GetConsistTotalMass") end
+
+---Get the consist length.
+---@return number The length in metres.
+function ApiUtil.getConsistLength() return Call("GetConsistLength") end
+
+---Get the gradient at the front of the consist.
+---@return number The gradient as a percentage.
+function ApiUtil.getGradient() return Call("GetGradient") end
+
+---Get the curvature (radius of curve) at the front of the consist.
+---@return number The radius of the curve in metres.
+function ApiUtil.getCurvature() return Call("GetCurvature") end
+
+---Get the curvature relative to the front of the vehicle.
+---@param displacement number If positive, gets curvature this number of metres ahead of the front of the vehicle. If negative, gets curvature this number of metres behind the rear of the vehicle.
+---@return number The radius of the curve in metres `positive` if curving to the right, `negative` if curving to the left, relative to the way the vehicle is facing.
+function ApiUtil.getCurvatureAhead(displacement) return Call("GetCurvatureAhead", displacement) end
+
+---Get the rail vehicle's number.
+---@return number The rail vehicle number.
+function ApiUtil.getRvNumber() return Call("GetRVNumber") end
+
+---Set the rail vehicle's number (used for changing destination boards).
+---@param number number The new number for the vehicle.
+function ApiUtil.setRvNumber(number) Call("SetRVNumber", number) end
+
+---Send a message to the next or previous rail vehicle in the consist.
+---Calls the script function `OnConsistMessage(message, argument, direction)` in the next or previous rail vehicle.
+---@param message number The ID of a message to send (IDs 0 to 100 are reserved, please use IDs greater than 100).
+---@param argument string
+---@param direction number Use `0` to send a message to the vehicle in front, `1` to send a message to the vehicle behind.
+---@return number If there was a next/previous rail vehicle `1`.
+function ApiUtil.sendConsistMessage(message, argument, direction)
+    return Call("SendConsistMessage", message, argument, direction)
+end
+
+---Get the next restrictive signal's distance and state.
+---@param direction number Optional. `0` = forwards, `1` = backwards. Defaults to `0`.
+---@param minDistance number Optional. How far ahead in metres to start searching. Defaults to `0`.
+---@param maxDistance number Optional. How far ahead in metres to stop searching. Defaults to `10 000`.
+---@return number , number, number, number Param1: `1` = nothing found, `0` = end of track, `>0` = signal found; Param2: Basic signal state: `-1` = invalid, `1` = warning, `2` = red; Param3: Distance in metres to signal; Param4: 2D map's "pro" signal state for more detailed aspect information. `-1` = invalid, `1` = yellow, `2` = double-yellow, `3` = red, `10` = flashing-yellow, `11` = flashing-double-yellow.
+function ApiUtil.getNextRestrictiveSignal(direction, minDistance, maxDistance)
+    return Call("GetNextRestrictiveSignal", direction, minDistance, maxDistance)
+end
+
+---Set a failure value on the train brake system for this vehicle.
+---@param name string The name of the failure type. Either one of `BRAKE_FADE` (the proportion of brake power lost due to fade in the braking as a result of excess heat) or `BRAKE_LOCK` (the proportion of max force the brake is stuck at due to locking on the wheel).
+---@param value number The value of the failure dependent on failure type.
+function ApiUtil.setBrakeFailureValue(name, value)
+    Call("SetBrakeFailureValue", name, value)
+end
 
 
 --Render
