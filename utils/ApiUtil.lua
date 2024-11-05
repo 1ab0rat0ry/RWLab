@@ -1,7 +1,7 @@
+---@class ApiUtil
 local ApiUtil = {}
 
 --Script
-
 ---Request script to get update call once per frame.
 function ApiUtil.beginUpdate() Call("BeginUpdate") end
 
@@ -28,33 +28,31 @@ function ApiUtil.isExpertMode() return Call("IsExpertMode") end
 
 
 --Control values
-
-
 ---Evaluates whether a control with a specific name exists.
 ---@param name string
----@param index number
+---@param index number Optional, defaults to `0`. The index of the control (usually `0` unless there are multiple controls with the same name).
 ---@return boolean If the control exists `true` otherwise `false`.
 function ApiUtil.controlExists(name, index) return Call("ControlExists", name, index or 0) end
 
 ---Get the value for a control.
 ---@param name string
----@param index number
+---@param index number Optional, defaults to `0`. The index of the control (usually `0` unless there are multiple controls with the same name).
 ---@return number The value for the control.
 function ApiUtil.getControlValue(name, index) return Call("GetControlValue", name, index or 0) end
 
 ---Sets a value for a control.
 ---@param name string
----@param index number
+---@param index number Optional, defaults to `0`. The index of the control (usually `0` unless there are multiple controls with the same name).
 function ApiUtil.setControlValue(name, value, index) Call("SetControlValue", name, index or 0, value) end
 
 ---Locks a control so the user can no longer affect it.
 ---@param name string
----@param index number
+---@param index number Optional, defaults to `0`. The index of the control (usually `0` unless there are multiple controls with the same name).
 function ApiUtil.lockControl(name, index) return Call("LockControl", name, index or 0, true) end
 
 ---Unlocks a control so the user can affect it.
 ---@param name string
----@param index number
+---@param index number Optional, defaults to `0`. The index of the control (usually `0` unless there are multiple controls with the same name).
 function ApiUtil.unlockControl(name, index) return Call("LockControl", name, index or 0, false) end
 
 
@@ -68,13 +66,11 @@ function ApiUtil.unlockControl(name, index) return Call("LockControl", name, ind
 
 
 --Scenario
-
-
 ---Shows a dialogue box with a message.
 ---If `title` or `message` are in UUID format, then they are used as keys into the language table.
 ---@param title string
 ---@param message string
----@param alert number Optional, the type of message box `INFO(0)` or `ALERT(1)`. Defaults to `ALERT` when not specified.
+---@param alert number Optional, defaults to `ALERT`. The type of message box `INFO(0)` or `ALERT(1)`.
 function ApiUtil.showMessage(title, message, alert)
     SysCall("ScenarioManager:ShowMessage", title, message, alert or 1)
 end
