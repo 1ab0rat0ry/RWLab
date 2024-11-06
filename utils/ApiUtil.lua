@@ -1,3 +1,4 @@
+---Provides implementation of the game API functions in Lua.
 ---@class ApiUtil
 local ApiUtil = {}
 
@@ -16,6 +17,9 @@ function ApiUtil.isExpertMode() return Call("IsExpertMode") end
 
 
 --Position
+---Get the position in the current world frame of the object (local coordinates are local to a moving origin centred on the camera's current tile).
+---@return number, number, number The position x, y, z in metres relative to the origin.
+function ApiUtil.getNearPosition() return Call("getNearPosition") end
 
 
 --Rail vehicle
@@ -66,7 +70,7 @@ function ApiUtil.setRvNumber(number) Call("SetRVNumber", number) end
 
 ---Send a message to the next or previous rail vehicle in the consist.
 ---Calls the script function `OnConsistMessage(message, argument, direction)` in the next or previous rail vehicle.
----@param message number The ID of a message to send (IDs 0 to 100 are reserved, please use IDs greater than 100).
+---@param message number The ID of a message to send (IDs `0` to `100` are reserved, please use IDs greater than `100`).
 ---@param argument string
 ---@param direction number Use `0` to send a message to the vehicle in front, `1` to send a message to the vehicle behind.
 ---@return number If there was a next/previous rail vehicle `1`.
@@ -78,7 +82,7 @@ end
 ---@param direction number Optional. `0` = forwards, `1` = backwards. Defaults to `0`.
 ---@param minDistance number Optional. How far ahead in metres to start searching. Defaults to `0`.
 ---@param maxDistance number Optional. How far ahead in metres to stop searching. Defaults to `10 000`.
----@return number , number, number, number Param1: `1` = nothing found, `0` = end of track, `>0` = signal found; Param2: Basic signal state: `-1` = invalid, `1` = warning, `2` = red; Param3: Distance in metres to signal; Param4: 2D map's "pro" signal state for more detailed aspect information. `-1` = invalid, `1` = yellow, `2` = double-yellow, `3` = red, `10` = flashing-yellow, `11` = flashing-double-yellow.
+---@return number, number, number, number Param 1: `1` = nothing found, `0` = end of track, `>0` = signal found; Param 2: Basic signal state: `-1` = invalid, `1` = warning, `2` = red; Param 3: Distance in metres to signal; Param4: 2D map's "pro" signal state for more detailed aspect information. `-1` = invalid, `1` = yellow, `2` = double-yellow, `3` = red, `10` = flashing-yellow, `11` = flashing-double-yellow.
 function ApiUtil.getNextRestrictiveSignal(direction, minDistance, maxDistance)
     return Call("GetNextRestrictiveSignal", direction, minDistance, maxDistance)
 end
@@ -88,6 +92,28 @@ end
 ---@param value number The value of the failure dependent on failure type.
 function ApiUtil.setBrakeFailureValue(name, value)
     Call("SetBrakeFailureValue", name, value)
+end
+
+---Get the type, limit and distance to the next speed limit.
+---@param direction number Optional. `0` = forwards, `1` = backwards. Defaults to `0`.
+---@param minDistance number Optional. How far ahead in metres to start searching. Defaults to `0`.
+---@param maxDistance number Optional. How far ahead in metres to stop searching. Defaults to `10 000`.
+---@return number, number, number Param 1: `-1` = nothing found, `0` = end of track, `1` = track speed limit (no signage), `2` = track speed limit sign, `3` = track speed limit; Param 2: Restriction in metres per second; Param 3: Distance in metres to speed limit.
+function ApiUtil.getNextSpeedLimit(direction, minDistance, maxDistance)
+    return Call("GetNextSpeedLimit", direction, minDistance, maxDistance)
+end
+
+---Get the current speed limit for the consist.
+---@param component number Optional. `0` = return current limit, `1` = return separate track and signal limit. Defaults to `0`.
+---@return number, number If `component` is set to `0`, then a single value is returned. Otherwise, two values are returned for track and signal limits respectively.
+function ApiUtil.getCurrentSpeedLimit(component)
+    return Call("GetCurrentSpeedLimit", component)
+end
+
+---Get the class of the consist.
+---@return number eTrainTypeSpecial = `0`, eTrainTypeLightEngine = `1`, eTrainTypeExpressPassenger = `2`, eTrainTypeStoppingPassenger = `3`, eTrainTypeHighSpeedFreight = `4`, eTrainTypeExpressFreight = `5`, eTrainTypeStandardFreight = `6`, eTrainTypeLowSpeedFreight = `7`, eTrainTypeOtherFreight = `8`, eTrainTypeEmptyStock = `9`, eTrainTypeInternational = `10`
+function ApiUtil.getConsistType()
+    return Call("GetConsistType")
 end
 
 
