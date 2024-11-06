@@ -116,6 +116,18 @@ function ApiUtil.getConsistType()
     return Call("GetConsistType")
 end
 
+---Evaluates if camera is near this vehicle ( < 4 km).
+---@return boolean
+function ApiUtil.getIsNearCamera()
+    return Call("GetIsNearCamera")
+end
+
+---Evaluates if the vehicle is in a tunnel.
+---@return boolean
+function ApiUtil.getIsInTunnel()
+    return Call("GetIsInTunnel")
+end
+
 
 --Render
 
