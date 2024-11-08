@@ -4,6 +4,8 @@ local Reservoir = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/Reser
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 ---@type MovingAverage
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
+---@type ApiUtil
+local ApiUtil = require "Assets/1ab0rat0ry/RWLab/utils/ApiUtil.out"
 
 local REFERENCE_PRESSURE = 5
 local MIN_REDUCTION_PRESSURE_DROP = 0.3
@@ -149,7 +151,7 @@ end
 ---@param feedPipe Reservoir
 ---@param brakePipe Reservoir
 function DakoBs2:update(deltaTime, feedPipe, brakePipe)
-    self:updateControlMechanism(deltaTime, Call("GetControlValue", "VirtualBrake", 0), feedPipe, brakePipe)
+    self:updateControlMechanism(deltaTime, ApiUtil.getControlValue("VirtualBrake"), feedPipe, brakePipe)
     self:updateDistributorMechanism(deltaTime, feedPipe, brakePipe)
     self:updateOvercharge(deltaTime, feedPipe, brakePipe)
 end
@@ -243,7 +245,7 @@ function DakoBs2:updateOvercharge(deltaTime, feedPipe, brakePipe)
     if self.overchargeRes.pressure > 0 then self.overchargeRes:vent(deltaTime, 1, OVERCHARGE_RES_EMPTY_RATE) end
     if self.distributorValve.controlChamber.pressure > 5.1 and self.distributorValve.position > 0.3 then
         self.overchargeRes:equalize(feedPipe, deltaTime, 0.335)
-    elseif self.hasOvercharge and Call("GetControlValue", "Overcharge", 0) > 0.5 then
+    elseif self.hasOvercharge and ApiUtil.getControlValue("Overcharge") > 0.5 then
         self.overchargeRes:equalize(brakePipe, deltaTime, 0.335)
     end
 end
