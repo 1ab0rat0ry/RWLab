@@ -3,7 +3,7 @@ local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 ---@type MovingAverage
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
 
-local MAX_HYSTERESIS = 0.1
+local MAX_HYSTERESIS = 0.3
 local MIN_HYSTERESIS = 0.001
 
 ---@class DakoDistributorValve
@@ -45,7 +45,7 @@ function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(MAX_HYSTERESIS, self.hysteresis + deltaTime / 10)
+        self.hysteresis = math.min(MAX_HYSTERESIS, self.hysteresis + MAX_HYSTERESIS * deltaTime / 10)
     elseif positionDelta > 0.001 then
         self.hysteresis = math.max(MIN_HYSTERESIS, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
     end

@@ -22,7 +22,7 @@ local OVERCHARGE_RES_EMPTY_RATE = 0.03
 
 local FILL_RATE = 30
 local EMPTY_RATE = 20
-local EMERGENCY_EMPTY_RATE = 70
+local EMERGENCY_EMPTY_RATE = 60
 
 ---Regulates pressure in brake pipe based on the pressure in control chamber.
 ---@class DistributorValve
@@ -32,8 +32,8 @@ local EMERGENCY_EMPTY_RATE = 70
 ---@field public controlChamber Reservoir
 ---@field private average MovingAverage
 local DistributorValve = {
-    MAX_HYSTERESIS = 0.1,
-    MIN_HYSTERESIS = 0.003,
+    MAX_HYSTERESIS = 0.3,
+    MIN_HYSTERESIS = 0.002,
     hysteresis = 0,
     position = 0,
     controlChamber = {},
@@ -65,7 +65,7 @@ function DistributorValve:update(deltaTime, brakePipe, overchargePressure)
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
-        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + deltaTime / 10)
+        self.hysteresis = math.min(self.MAX_HYSTERESIS, self.hysteresis + self.MAX_HYSTERESIS *  deltaTime / 10)
     elseif positionDelta > 0.001 then
         self.hysteresis = math.max(self.MIN_HYSTERESIS, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
     end
