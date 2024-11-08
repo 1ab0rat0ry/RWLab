@@ -113,9 +113,12 @@ end
 ---@param deltaTime number
 ---@param brakePipe Reservoir
 function DakoBv1:updateEqualizingMechanism(deltaTime, brakePipe)
-    if self.cylinder.pressure > CHARGE_THRESHOLD then return end
-    self.auxiliaryRes:equalize(brakePipe, deltaTime, 1.863)
-    self.distributorRes:equalize(brakePipe, deltaTime, 0.168)
+    local openingForce = brakePipe.pressure / RELEASE_THRESHOLD + 3
+    local closingForce = self.cylinder.pressure / CHARGE_THRESHOLD
+    local equalizingValve = MathUtil.clamp(openingForce - closingForce, 0, 1)
+
+    self.auxiliaryRes:equalize(brakePipe, deltaTime, 1.863 * equalizingValve)
+    self.distributorRes:equalize(brakePipe, deltaTime, 0.168 * equalizingValve)
 end
 
 ---Refills auxiliary reservoir.
