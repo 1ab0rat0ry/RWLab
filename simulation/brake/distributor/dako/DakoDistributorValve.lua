@@ -3,7 +3,7 @@ local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 ---@type MovingAverage
 local MovingAverage = require "Assets/1ab0rat0ry/RWLab/utils/math/MovingAverage.out"
 
-local MAX_HYSTERESIS = 0.3
+local MAX_HYSTERESIS = 1
 local MIN_HYSTERESIS = 0.001
 
 ---@class DakoDistributorValve
@@ -21,8 +21,6 @@ local DakoDistributorValve = {
 DakoDistributorValve.__index = DakoDistributorValve
 
 ---@param pressureCoef number
----@param inshotPressure number
----@param releasePressure number pressure at which distributor switches to charging position when brake pipe pressure before braking was `5 bar`
 function DakoDistributorValve:new(pressureCoef)
     ---@type DakoDistributorValve
     local obj = {
@@ -55,8 +53,10 @@ function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
         self.position = 0
     elseif self.position < positionTarget - self.hysteresis then
         self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
+        self.hysteresis = 0
     elseif self.position > positionTarget + self.hysteresis then
         self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
+        self.hysteresis = 0
     end
 end
 
