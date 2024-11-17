@@ -1,9 +1,10 @@
---Adapted from: https://github.com/mspielberg/dv-airbrake
---Original author: mspielberg
-
+---@type AirFlow
+local AirFlow = require "Assets/1ab0rat0ry/RWLab/simulation/brake/common/AirFlow.out"
 ---@type MathUtil
 local MathUtil = require "Assets/1ab0rat0ry/RWLab/utils/math/MathUtil.out"
 
+---Original author: mspielberg
+---Adapted from: https://github.com/mspielberg/dv-airbrake
 ---@class Reservoir
 ---@field public pressure number
 ---@field public capacity number
@@ -65,9 +66,8 @@ function Reservoir:equalize(reservoir, deltaTime, flowCoef, maxPressureChangeRat
     flowCoef = flowCoef or 1
     maxPressureChangeRate = maxPressureChangeRate or 1e10
 
-    local pressureCoef = math.sqrt(math.abs(self.pressure - reservoir.pressure))
     local maxFlow = self.capacity * maxPressureChangeRate
-    local flow = pressureCoef * flowCoef
+    local flow = AirFlow:get(self.pressure, reservoir.pressure, flowCoef, 20)
 
     flow = math.min(flow, maxFlow) * deltaTime
     self:transferVolume(reservoir, flow)
@@ -77,7 +77,7 @@ end
 ---@param source Reservoir
 ---@param deltaTime number
 ---@param maxPressureChangeRate number
----@param flowMultiplier number
+---@param flowCoef number
 function Reservoir:fillFrom(source, deltaTime, flowCoef, maxPressureChangeRate)
     if source.pressure <= self.pressure then return end
     self:equalize(source, deltaTime, flowCoef, maxPressureChangeRate)
@@ -86,7 +86,7 @@ end
 ---Empties reservoir.
 ---@param deltaTime number
 ---@param maxPressureChangeRate number
----@param flowMultiplier number
+---@param flowCoef number
 function Reservoir:vent(deltaTime, flowCoef, maxPressureChangeRate)
     self.atmosphere.pressure = 0
     self:equalize(self.atmosphere, deltaTime, flowCoef, maxPressureChangeRate)
