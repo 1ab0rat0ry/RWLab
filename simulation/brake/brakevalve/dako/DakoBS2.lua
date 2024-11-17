@@ -32,7 +32,7 @@ local EMERGENCY_EMPTY_RATE = 60
 ---@field public controlChamber Reservoir
 ---@field private average MovingAverage
 local DistributorValve = {
-    MAX_HYSTERESIS = 1,
+    MAX_HYSTERESIS = 0.5,
     MIN_HYSTERESIS = 0.002,
     hysteresis = 0,
     position = 0,
@@ -75,10 +75,10 @@ function DistributorValve:update(deltaTime, brakePipe, overchargePressure)
         self.position = 0
     elseif self.position < positionTarget - self.hysteresis then
         self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
-        self.hysteresis = 0
+        self.hysteresis = self.MIN_HYSTERESIS
     elseif self.position > positionTarget + self.hysteresis then
         self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
-        self.hysteresis = 0
+        self.hysteresis = self.MIN_HYSTERESIS
     end
 end
 
