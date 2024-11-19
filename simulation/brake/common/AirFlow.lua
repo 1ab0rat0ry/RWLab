@@ -11,11 +11,6 @@ local BAR_TO_PASCAL = 1e5
 local CUBIC_METRES_TO_LITRES = 1000
 local MILLIMETRES_SQUARED_TO_METRES_SQUARED = 1e-6
 
-local DEBUG = false
-local Logger = require "Assets/1ab0rat0ry/RWLab/utils/Logger.out"
-
-local logger = Logger:new(DEBUG, "!Flow.log")
-
 ---@class AirFlow
 local AirFlow = {}
 
