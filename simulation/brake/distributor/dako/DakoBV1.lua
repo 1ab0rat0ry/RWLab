@@ -74,8 +74,8 @@ function DakoBv1:new(auxResCapacity, cylinderCapacity)
         cylinder = Cylinder:new(cylinderCapacity, CYLINDER_MAX_PRESSURE)
     }
     obj = setmetatable(obj, self)
-    -- obj.distributorRes.pressure = 5
-    -- obj.auxiliaryRes.pressure = 5
+    obj.distributorRes.pressure = 5
+    obj.auxiliaryRes.pressure = 5
 
     return obj
 end
@@ -117,8 +117,8 @@ function DakoBv1:updateEqualizingMechanism(deltaTime, brakePipe)
     local closingForce = self.cylinder.pressure / CHARGE_THRESHOLD
     local equalizingValve = MathUtil.clamp(openingForce - closingForce, 0, 1)
 
-    self.auxiliaryRes:equalize(brakePipe, deltaTime, 0.9315 * equalizingValve)
-    self.distributorRes:equalize(brakePipe, deltaTime, 0.084 * equalizingValve)
+    self.auxiliaryRes:equalize(brakePipe, deltaTime, 2.2 * equalizingValve)
+    self.distributorRes:equalize(brakePipe, deltaTime, 0.198 * equalizingValve)
 end
 
 ---Refills auxiliary reservoir.
