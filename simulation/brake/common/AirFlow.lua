@@ -9,6 +9,7 @@ local CORRECTION_COEF = 0.7
 local CELSIUS_TO_KELVIN = 273.15
 local BAR_TO_PASCAL = 1e5
 local CUBIC_METRES_TO_LITRES = 1000
+local MILLIMETRES_SQUARED_TO_METRES_SQUARED = 1e-6
 
 local DEBUG = false
 local Logger = require "Assets/1ab0rat0ry/RWLab/utils/Logger.out"
@@ -29,7 +30,7 @@ function AirFlow:get(pressure1, pressure2, area, temperature)
     local pressureIn = math.max(pressure1, pressure2) * BAR_TO_PASCAL + ATM_PRESSURE
     local pressureOut = math.min(pressure1, pressure2) * BAR_TO_PASCAL + ATM_PRESSURE
     local pressureRatio = pressureOut / pressureIn
-    local baseComponent = CORRECTION_COEF * area / AIR_DENSITY * CUBIC_METRES_TO_LITRES
+    local baseComponent = CORRECTION_COEF * area * MILLIMETRES_SQUARED_TO_METRES_SQUARED / AIR_DENSITY * CUBIC_METRES_TO_LITRES
 
     if pressureRatio > CRITICAL_PRESSURE_RATIO then
         local component1 = 2 * self:getDensity(pressureIn, temperature) * pressureIn * HEAT_RATIO / HEAT_RATIO_DEC
