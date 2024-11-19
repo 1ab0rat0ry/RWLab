@@ -25,7 +25,7 @@ function DakoDistributorValve:new(pressureCoef)
     ---@type DakoDistributorValve
     local obj = {
         pressureCoef = pressureCoef,
-        average = MovingAverage:new(3)
+        average = MovingAverage:new(10)
     }
     obj = setmetatable(obj, self)
 
@@ -39,7 +39,10 @@ end
 function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
     local pressureCalculated = (distributor.distributorRes.pressure - brakePipe.pressure) * self.pressureCoef
     local pressureDiff = pressureCalculated - distributor.cylinder.pressure
-    local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, 1)
+
+    self.average:sample(MathUtil.clamp(3 * pressureDiff, -1, 1))
+
+    local positionTarget = self.average:get()
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
@@ -47,15 +50,14 @@ function DakoDistributorValve:update(deltaTime, brakePipe, distributor)
     elseif positionDelta > 0.001 then
         self.hysteresis = math.max(MIN_HYSTERESIS, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
     end
-    self.average:sample(positionTarget)
 
     if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
         self.position = 0
     elseif self.position < positionTarget - self.hysteresis then
-        self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
+        self.position = MathUtil.towards(self.position, positionTarget, deltaTime)
         self.hysteresis = MIN_HYSTERESIS
     elseif self.position > positionTarget + self.hysteresis then
-        self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
+        self.position = MathUtil.towards(self.position, positionTarget, deltaTime)
         self.hysteresis = MIN_HYSTERESIS
     end
 end

@@ -32,8 +32,8 @@ local EMERGENCY_EMPTY_RATE = 60
 ---@field public controlChamber Reservoir
 ---@field private average MovingAverage
 local DistributorValve = {
-    MAX_HYSTERESIS = 0.5,
-    MIN_HYSTERESIS = 0.002,
+    MAX_HYSTERESIS = 0.1,
+    MIN_HYSTERESIS = 0.001,
     hysteresis = 0,
     position = 0,
     controlChamber = {},
@@ -47,7 +47,7 @@ function DistributorValve:new()
     ---@type DistributorValve
     local obj = {
         controlChamber = Reservoir:new(0.3),
-        average = MovingAverage:new(3)
+        average = MovingAverage:new(10)
     }
     obj = setmetatable(obj, self)
     obj.controlChamber.pressure = 5
@@ -61,7 +61,10 @@ end
 ---@param overchargePressure number
 function DistributorValve:update(deltaTime, brakePipe, overchargePressure)
     local pressureDiff = self.controlChamber.pressure - brakePipe.pressure + overchargePressure / 12.5
-    local positionTarget = MathUtil.clamp(3 * pressureDiff, -1, 1)
+
+    self.average:sample(MathUtil.clamp(3 * pressureDiff, -1, 1))
+
+    local positionTarget = self.average:get()
     local positionDelta = math.abs(positionTarget - self.position)
 
     if math.abs(self.position) < 0.001 and positionDelta < 0.001 then
@@ -69,15 +72,14 @@ function DistributorValve:update(deltaTime, brakePipe, overchargePressure)
     elseif positionDelta > 0.001 then
         self.hysteresis = math.max(self.MIN_HYSTERESIS, self.hysteresis - math.sqrt(positionDelta) * deltaTime)
     end
-    self.average:sample(positionTarget)
 
     if math.abs(self.position) < 0.001 and math.abs(positionTarget) < 0.001 then
         self.position = 0
     elseif self.position < positionTarget - self.hysteresis then
-        self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
+        self.position = MathUtil.towards(self.position, positionTarget, 4 * deltaTime)
         self.hysteresis = self.MIN_HYSTERESIS
     elseif self.position > positionTarget + self.hysteresis then
-        self.position = MathUtil.towards(self.position, self.average:get(), deltaTime)
+        self.position = MathUtil.towards(self.position, positionTarget, 4 * deltaTime)
         self.hysteresis = self.MIN_HYSTERESIS
     end
 end
