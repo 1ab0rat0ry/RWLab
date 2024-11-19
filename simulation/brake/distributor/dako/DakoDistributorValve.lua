@@ -33,6 +33,8 @@ function DakoDistributorValve:new(pressureCoef)
 end
 
 ---Calculates target cylinder pressure and updates position accordingly.
+---`Author:` Jáchym Hurtík https://github.com/JachyHm/RailWorksLUAscriptExamples/blob/master/script_460.lua#L4026
+---`Modification:` 1ab0ra0try
 ---@param deltaTime number
 ---@param brakePipe Reservoir
 ---@param distributor DakoBv1

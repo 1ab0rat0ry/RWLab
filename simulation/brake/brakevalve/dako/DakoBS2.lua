@@ -56,6 +56,8 @@ function DistributorValve:new()
 end
 
 ---Updates position accordingly to pressure in control chamber and overcharge reservoir.
+---`Author:` Jáchym Hurtík https://github.com/JachyHm/RailWorksLUAscriptExamples/blob/master/script_460.lua#L4026
+---`Modification:` 1ab0ra0try
 ---@param deltaTime number
 ---@param brakePipe Reservoir
 ---@param overchargePressure number
